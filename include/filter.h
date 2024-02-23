@@ -12,9 +12,10 @@ Ontario, Canada
 // add headers as needed
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 // declaration of a function prototypes
 void impulseResponseLPF(float, float, unsigned short int, std::vector<float> &);
-void convolveFIR(std::vector<float> &, const std::vector<float> &, const std::vector<float> &);
+void convolveFIR(std::vector<float> &, const std::vector<float> &, const std::vector<float> &, std::vector<float> &, int);
 
 #endif // DY4_FILTER_H

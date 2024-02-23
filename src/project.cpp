@@ -13,9 +13,69 @@ Ontario, Canada
 #include "genfunc.h"
 #include "iofunc.h"
 #include "logfunc.h"
+#include "mono.h"
+#include "stereo.h"
+#include "rds.h"
+#include <map>
 
-int main()
+typedef void (*ModeFunction)();
+
+int main(int argc, char* argv[])
 {
+	
+	if (argc < 3){
+		mono_mode0();
+		std::cerr << "Usage: <mode> <type>\n";
+		exit(1);
+	} 
+	
+	std::map<char, std::map<char, ModeFunction>> modeFunctionMap = {
+        {'0', {
+            {'m', mono_mode0},
+            {'s', stereo_mode0},
+            {'r', rds_mode0}
+        }},
+        {'1', {
+            {'m', mono_mode1},
+            {'s', stereo_mode1},
+            {'r', rds_mode1}
+        }},
+        {'2', {
+            {'m', mono_mode2},
+            {'s', stereo_mode2},
+            {'r', rds_mode2}
+        }},
+		{'3', {
+            {'m', mono_mode3},
+            {'s', stereo_mode3},
+            {'r', rds_mode3}
+        }},
+    };
+    
+    char mode = *argv[1];
+	char type = *argv[2];
+	
+    if (modeFunctionMap.count(mode) > 0) {
+        auto& innerMap = modeFunctionMap[mode];
+        if (innerMap.count(type) > 0) {
+            ModeFunction func = innerMap[type];
+            func();
+        } else {
+            std::cerr << "Invalid type for mode " << mode << "\n";
+        }
+    } else {
+        std::cerr << "Invalid mode\n";
+    }
+
+	/*
+	else if (*argv[1] == '0' && *argv[2] == 'm'){
+		mono_mode0();
+	} else {
+		std::cerr << "Invalid args\n";
+		exit(1);
+	}
+	*/
+	
 	// binary files can be generated through the
 	// Python models from the "../model/" sub-folder
 	const std::string in_fname = "../data/fm_demod_10.bin";
