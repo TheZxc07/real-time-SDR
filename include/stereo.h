@@ -1,3 +1,5 @@
+#include <iostream>
+
 void stereo_mode0();
 
 void stereo_mode1();
