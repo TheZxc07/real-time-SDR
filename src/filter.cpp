@@ -30,20 +30,35 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
 
 // function to compute the filtered output "y" by doing the convolution
 // of the input data "x" with the impulse response "h"
-void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, int decimation_factor)
+void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, const int decimation_factor)
 {
-	y.clear(); y.resize(x.size());
+	y.clear(); y.resize(x.size()/decimation_factor);
 	for (int n = 0; n < x.size(); n+=decimation_factor) {
 		for (int k = 0; k < h.size(); k++){
 			if (n-k < 0) {
-				y[n] += h[k]*initial_state[n-k+initial_state.size()];
+				y[n/decimation_factor] += h[k]*initial_state[n-k+initial_state.size()];
 			}else{
-				y[n] += h[k]*x[n-k];
+				y[n/decimation_factor] += h[k]*x[n-k];
 			}
 		}
 	}
 
 	initial_state = std::vector<float>(x.end()-h.size()+1,x.end());
 	
+}
+void convolveFIR(const int over, std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, const int decimation_factor)
+{
+	y.clear(); y.resize(x.size()/decimation_factor);
+	for (int n = 0; n < x.size(); n+=decimation_factor) {
+		for (int k = 0; k < h.size(); k++){
+			if (n-k < 0) {
+				y[n/decimation_factor] += (short int)((16384*h[k]*initial_state[n-k+initial_state.size()]));
+			}else{
+				y[n/decimation_factor] += (short int)((16384*h[k]*x[n-k]));
+			}
+		}
+	}
+
+	initial_state = std::vector<float>(x.end()-h.size()+1,x.end());
 	
 }

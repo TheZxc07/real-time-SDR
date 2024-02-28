@@ -37,6 +37,8 @@ void mono_mode0(){
 	std::vector<float> filt_IQ = std::vector<float>(block_size);
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
+	state_I.clear();
+	state_Q.clear();
 	std::vector<float> fm_demod = std::vector<float>(block_size/rf_decim);
 	float prev_I = 0, prev_Q = 0;
 	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
@@ -58,23 +60,27 @@ void mono_mode0(){
 		}
 		sample_num = 0;
 		
-		convolveFIR(filt_IQ, I, rf_h, state_I, rf_decim);
+		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
+		/*
 		for (int i = 0; i < block_size; i+=rf_decim){
 			I_ds[i/rf_decim] = filt_IQ[i];
 		}
-		convolveFIR(filt_IQ, Q, rf_h, state_Q, rf_decim);
+		*/
+		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
+		/*
 		for (int i = 0; i < block_size; i+=rf_decim){
 			Q_ds[i/rf_decim] = filt_IQ[i];
 		}
-		
+		*/
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
 		
 		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, audio_decim);
 		
-		for (int i = 0; i < block_size/rf_decim; i+=audio_decim){
-			audio[i/audio_decim] = (short int)(16384*audio_filt[i]);
-			//std::cerr << audio[i/audio_decim] << std::endl;
+		for (int i = 0; i < audio.size(); i++){
+			audio[i] = (short int)(16384*audio_filt[i]);
+			//std::cerr << audio_filt[i] << std::endl;
 		}
+		
 	
 		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
 		
@@ -145,14 +151,18 @@ void mono_mode1(){
 		}
 		sample_num = 0;
 		
-		convolveFIR(filt_IQ, I, rf_h, state_I, rf_decim);
+		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
+		/*
 		for (int i = 0; i < block_size; i+=rf_decim){
 			I_ds[i/rf_decim] = filt_IQ[i];
 		}
-		convolveFIR(filt_IQ, Q, rf_h, state_Q, rf_decim);
+		*/
+		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
+		/*
 		for (int i = 0; i < block_size; i+=rf_decim){
 			Q_ds[i/rf_decim] = filt_IQ[i];
 		}
+		*/
 		
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
 		
