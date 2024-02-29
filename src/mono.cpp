@@ -34,7 +34,10 @@ void mono_mode0(){
 	std::vector<float> Q = std::vector<float>(block_size);
 	std::vector<float> I_ds = std::vector<float>(block_size/rf_decim);
 	std::vector<float> Q_ds = std::vector<float>(block_size/rf_decim);
-	std::vector<float> filt_IQ = std::vector<float>(block_size);
+
+	std::vector<float> filt_I = std::vector<float>(block_size);
+	std::vector<float> filt_Q = std::vector<float>(block_size);
+
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
 	std::vector<float> fm_demod = std::vector<float>(block_size/rf_decim);
@@ -58,16 +61,16 @@ void mono_mode0(){
 		}
 		sample_num = 0;
 		
-		convolveFIR(filt_IQ, I, rf_h, state_I, rf_decim);
-		for (int i = 0; i < block_size; i+=rf_decim){
-			I_ds[i/rf_decim] = filt_IQ[i];
-		}
-		convolveFIR(filt_IQ, Q, rf_h, state_Q, rf_decim);
-		for (int i = 0; i < block_size; i+=rf_decim){
-			Q_ds[i/rf_decim] = filt_IQ[i];
-		}
+		convolveFIR(filt_I, I, rf_h, state_I, rf_decim);
+		//for (int i = 0; i < block_size; i+=rf_decim){
+		//	I_ds[i/rf_decim] = filt_IQ[i];
+		//}
+		convolveFIR(filt_Q, Q, rf_h, state_Q, rf_decim);
+		//for (int i = 0; i < block_size; i+=rf_decim){
+		//	Q_ds[i/rf_decim] = filt_IQ[i];
+		//}
 		
-		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
+		fmDemodNoArctan(filt_I, filt_Q, prev_I, prev_Q, fm_demod, rf_decim);
 		
 		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, audio_decim);
 		
