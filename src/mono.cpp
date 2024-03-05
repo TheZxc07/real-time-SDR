@@ -201,8 +201,13 @@ void mono_mode2(){
 	int audio_Fs = 240e3;
 	int audio_Fc = 16e3;
 
-	int block_size = 1024 * rf_decim * audio_decim;
+	int up = 147;
+	int down = 800;
+
+	int block_size = 1024 * rf_decim * down;
 	int block_count = 0;
+
+
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
 	impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
@@ -251,7 +256,12 @@ void mono_mode2(){
 			Q_ds[i/rf_decim] = filt_IQ[i];
 		}
 		
-		
+		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
+
+		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, up, down);
+
+		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
+
 	}
 	
 }
