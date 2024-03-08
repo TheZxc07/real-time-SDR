@@ -1,6 +1,7 @@
 #include <iostream>
+#include "args.h"
 
-void stereo_mode0();
+void stereo_mode0(args*);
 
 void stereo_mode1();
 
