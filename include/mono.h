@@ -2,8 +2,9 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include "args.h"
 
-void mono_mode0();
+void mono_mode0(args*);
 
 void mono_mode1();
 

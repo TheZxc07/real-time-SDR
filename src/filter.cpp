@@ -28,7 +28,7 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
 	}
 }
 
-void impulseResponseBPF(float Fs, float[] Fb, unsigned short int num_taps, std::vector<float> &h)
+void impulseResponseBPF(float Fs, float* Fb, unsigned short int num_taps, std::vector<float> &h)
 {
 	h.clear(); h.resize(num_taps, 0.0);
 	

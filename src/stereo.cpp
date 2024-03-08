@@ -1,7 +1,7 @@
 #include "stereo.h"
 void stereo_mode0(){
 	
-	
+	/*
 	while(true){
 	
 	std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
@@ -15,6 +15,7 @@ void stereo_mode0(){
 	sample_num = 0;
 	
 	}
+	*/
 	//std::cerr << "TODO! - To be implemented in future renditions.\n";
 }
 
