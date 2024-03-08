@@ -1,10 +1,8 @@
 
 #include "mono.h"
 #include "filter.h"
-#include "demod.h"
 #include "args.h"
 #include "threadsafequeue.h"
-#include <bitset>
 
 void mono_mode0(args* p){
 	

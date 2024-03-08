@@ -46,6 +46,13 @@ void impulseResponseBPF(float Fs, float* Fb, unsigned short int num_taps, std::v
 	}
 }
 
+void impulseResponseAPF(float gain, unsigned short int num_taps, std::vector<float> &h)
+{
+	h.clear(); h.resize(num_taps, 0.0);
+	
+	h[(num_taps-1.0)/2.0] = gain;
+}
+
 
 // function to compute the filtered output "y" by doing the convolution
 // of the input data "x" with the impulse response "h"

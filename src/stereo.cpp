@@ -1,9 +1,17 @@
 #include "stereo.h"
-void stereo_mode0(){
+#include "filter.h"
+#include "args.h"
+#include "threadsafequeue.h"
+
+void stereo_mode0(args* p){
 	
+	std::vector<float> audio_h;
+	std::vector<float> mono_delay_h;
+	impulseResponseAPF(1, p->rf_taps, mono_delay_h);
+	 
 	/*
 	while(true){
-	
+
 	std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
 
 		while(sample_num < 2*block_size){
@@ -16,6 +24,8 @@ void stereo_mode0(){
 	
 	}
 	*/
+	
+	
 	//std::cerr << "TODO! - To be implemented in future renditions.\n";
 }
 
