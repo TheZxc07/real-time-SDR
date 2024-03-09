@@ -56,7 +56,7 @@ void impulseResponseAPF(float gain, unsigned short int num_taps, std::vector<flo
 
 // function to compute the filtered output "y" by doing the convolution
 // of the input data "x" with the impulse response "h"
-void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, const int decimation_factor)
+void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, const int decimation_factor, bool test)
 {
 	y.clear(); y.resize(x.size()/decimation_factor);
 	for (int n = 0; n < x.size(); n+=decimation_factor) {

@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 				   rds_mode0, rds_mode1, rds_mode2, rds_mode3};
 	*/			   
 	std::thread rf_frontend_thread(&RF_frontend, &func_args);
-	std::thread audio_thread(&mono_mode0, &func_args);
+	std::thread audio_thread(&stereo_mode0, &func_args);
 	
 	bandtype type;
 	switch((int)(*argv[2])){

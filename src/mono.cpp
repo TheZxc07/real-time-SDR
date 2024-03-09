@@ -168,7 +168,7 @@ void mono_mode1(){
 		}
 		*/
 		
-		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
+		//fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
 		
 		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, audio_decim);
 		
