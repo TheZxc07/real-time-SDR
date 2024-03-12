@@ -36,6 +36,7 @@ void stereo_mode0(args* p){
 	short sample;
 	
 	std::vector<float>* fm_demod;
+
 	stereo_dc.clear(); stereo_dc.resize(block_size, 0.0);
 	carrier.resize(block_size+1, 0.0);
 	carrier[0] = 1.0;
@@ -76,7 +77,19 @@ void stereo_mode0(args* p){
 				//std::cerr << stereo_dc[i] << std::endl;
 			}
 			
-			convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
+			//convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
+			
+			for (int i = 0; i < *fm_demod.size() + ((p->rf_taps-1)/2); i++){
+				if (i < ((p->rf_taps-1)/2) {
+					mono_delay[i] = mono_delay_state[i];
+				}else if(i > *fm_demod.size()){
+					mono_delay_state[i - *fm_demod.size()] = *fm_demod[i];
+				}else {
+					mono_delay[i] = *fm_demod[i - ((p->rf_taps-1)/2)];
+				}
+			}
+
+			
 			
 			convolveFIR(mono_filt, mono_delay, audio_h, mono_state, p->audio_decim);
 			convolveFIR(stereo_filt, stereo_dc, audio_h, stereo_state, p->audio_decim);
