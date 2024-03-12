@@ -34,7 +34,9 @@ int main(int argc, char* argv[])
 		10,
 		5,
 		240000,
-		16000
+		16000,
+		1,
+		1
 	};
 	
 	if (argc < 3){
@@ -48,16 +50,67 @@ int main(int argc, char* argv[])
 	std::thread rf_frontend_thread(&RF_frontend, &func_args);
 	std::thread audio_thread(&stereo_mode0, &func_args);
 	
+	//int rf_Fs;
+	//  int rf_decim; 
+	//audio_Fs
+	//audio_Fc
+	//int audio_decim to change 
 	bandtype type;
+
+
+	switch((int)(*argv[1])){
+		case 0:
+			// up is default to 1
+			func_args.rf_Fs= 2.4e6;
+			func_args.rf_decim = 10;
+			func_args.audio_decim=5;
+			func_args.audio_Fs=240e3;
+			break;
+		case 1:
+			func_args.rf_Fs= 1.44e6;
+			func_args.rf_decim = 4;
+			func_args.audio_decim=9;
+			func_args.audio_Fs=360e3;
+			
+			break;
+		case 2:
+			func_args.rf_Fs= 2.4e6;
+			func_args.rf_decim = 10;
+			func_args.audio_decim=5;
+			func_args.audio_Fs=240e3;
+			func_args.up=147;
+			func_args.down=800;
+			// have to add upsample and downsample
+			break;
+		
+		case 3:
+			func_args.rf_Fs=  1.152e6;
+			func_args.rf_decim = 3;
+			func_args.audio_decim=5;
+			func_args.audio_Fs=384e3;
+			func_args.up=147;
+			func_args.down=1280;
+			// have to add upsample and downsample
+			break;
+		
+		default:
+			shutdown();
+			break;
+	}
+
+	std::thread rf_frontend_thread(&RF_frontend, &func_args);
 	switch((int)(*argv[2])){
-		case 109:
-			type = M;
+		// Type M
+		case 109: 			
+			std::thread audio_thread(&mono_mode0, &func_args);
 			break;
+		// Type S
 		case 115:
-			type = S;
+			std::thread audio_thread(&stereo_mode0, &func_args);
 			break;
+		// Type R
 		case 114:
-			type = R;
+			std::thread audio_thread(&rds_mode0, &func_args);
 			break;
 		default:
 			shutdown();
