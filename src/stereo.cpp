@@ -21,7 +21,7 @@ void stereo_mode0(args* p){
 	std::vector<float> mono;
 	std::vector<float> mono_state = std::vector<float>(p->rf_taps-1);
 	std::vector<float> mono_filt;
-	std::vector<float> mono_delay;
+	std::vector<float> mono_delay = std::vector<float>(block_size);
 	std::vector<float> mono_delay_state = std::vector<float>(p->rf_taps-1);
 	std::vector<float> stereo_filt;
 	std::vector<float> stereo_state = std::vector<float>(p->rf_taps-1);
@@ -38,6 +38,7 @@ void stereo_mode0(args* p){
 	std::vector<float>* fm_demod;
 	stereo_dc.clear(); stereo_dc.resize(block_size, 0.0);
 	carrier.resize(block_size+1, 0.0);
+	mono_delay.resize(block_size, 0.0);
 	carrier[0] = 1.0;
 	stereo.clear(); stereo.resize(2*(block_size/p->audio_decim), 0.0);
 	mono_delay_state.resize(p->rf_taps-1, 0.0), stereo_state.resize(p->rf_taps-1, 0.0);
@@ -67,16 +68,20 @@ void stereo_mode0(args* p){
 			p->queue.wait_and_pop(fm_demod);
 			convolveFIR(extracted_pilot, *fm_demod, pilot_h, extracted_pilot_state, 1); 
 				
-			fmpll(extracted_pilot, 19e3, p->rf_Fc/p->rf_decim, carrier, block_args, 2.0);
+			fmpll(extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0);
 		
 			convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
 
 			for (int i = 0; i < carrier.size(); i++){
-				stereo_dc[i] = extracted_stereo_band[i]*carrier[i];
+				stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];
 				//std::cerr << stereo_dc[i] << std::endl;
 			}
 			
-			convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
+			for (int j = 0; j < block_size - 50; j++){
+				mono_delay[j+50] = (*fm_demod)[j];
+			}
+			
+			//convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
 			
 			convolveFIR(mono_filt, mono_delay, audio_h, mono_state, p->audio_decim);
 			convolveFIR(stereo_filt, stereo_dc, audio_h, stereo_state, p->audio_decim);
