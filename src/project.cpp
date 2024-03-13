@@ -59,21 +59,21 @@ int main(int argc, char* argv[])
 
 
 	switch((int)(*argv[1])){
-		case 0:
+		case 48:
 			// up is default to 1
 			func_args.rf_Fs= 2.4e6;
 			func_args.rf_decim = 10;
 			func_args.audio_decim=5;
 			func_args.audio_Fs=240e3;
 			break;
-		case 1:
+		case 49:
 			func_args.rf_Fs= 1.44e6;
 			func_args.rf_decim = 4;
 			func_args.audio_decim=9;
 			func_args.audio_Fs=360e3;
 			
 			break;
-		case 2:
+		case 50:
 			func_args.rf_Fs= 2.4e6;
 			func_args.rf_decim = 10;
 			func_args.audio_decim=5;
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 			// have to add upsample and downsample
 			break;
 		
-		case 3:
+		case 51:
 			func_args.rf_Fs=  1.152e6;
 			func_args.rf_decim = 3;
 			func_args.audio_decim=5;
