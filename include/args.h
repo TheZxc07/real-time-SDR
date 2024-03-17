@@ -12,6 +12,8 @@ struct args {
 	int audio_decim;
 	int audio_Fs;
 	int audio_Fc;
+	float up;
+	float down;
 };
 
 #endif // ARGS_H
