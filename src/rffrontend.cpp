@@ -2,7 +2,8 @@
 #include "filter.h"
 #include "threadsafequeue.h"
 #include "demod.h"
-	
+#include "iofunc.h"
+
 void RF_frontend(args* p){
 	
 	std::vector<float> audio_h;
@@ -33,8 +34,8 @@ void RF_frontend(args* p){
 	std::vector<float> filt_IQ = std::vector<float>(block_size);
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
-	state_I.clear();
-	state_Q.clear();
+	state_I.clear(); state_I.resize(rf_h.size()-1, 0.0);
+	state_Q.clear(); state_Q.resize(rf_h.size()-1, 0.0);
 	std::vector<float>* fm_demod;// = std::vector<float>(block_size/rf_decim);
 	std::vector<float>* fm_demod_ptr; 
 	float prev_I = 0, prev_Q = 0;
@@ -66,8 +67,10 @@ void RF_frontend(args* p){
 			Q_ds[i/rf_decim] = filt_IQ[i];
 		}
 		*/
+		
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, *fm_demod);
 		//std::cerr << fm_demod << std::endl;
+		
 		
 		p->queue.push(fm_demod);
 	}

@@ -13,7 +13,7 @@ void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<fl
     //float phaseEst = 0.0;
     //float feedbackI = 1.0;
     //float feedbackQ = 0.0;
-    //llOut[0];
+    pllOut[0] = pllOut[pllOut.size()-1];
     //float trigOffset = 0;
     float trigArg;
 
