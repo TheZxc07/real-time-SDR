@@ -14,8 +14,8 @@ void RF_frontend(args* p){
 	unsigned short int rf_taps = 101;
 	int rf_decim = 10;
 	int audio_decim = 5;
-	int audio_Fs = 240e3;  //Unused 
-	int audio_Fc = 16e3;	//Unused 
+	//int audio_Fs = 240e3;  //Unused 
+	//int audio_Fc = 16e3;	//Unused 
 	int block_size = 1024 * rf_decim * audio_decim;
 	//int block_count = 0;
 	
