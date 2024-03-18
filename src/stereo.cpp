@@ -32,8 +32,8 @@ void stereo_mode0(args* p){
 	int stereo_sample = 0;
 	short left_sample;
 	short right_sample;
-	float left;
-	float right;
+	//float left;
+	//float right;
 	short sample;
 	
 	std::vector<float>* fm_demod;
@@ -103,7 +103,7 @@ void stereo_mode0(args* p){
 		
 			convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
 
-			for (int i = 0; i < carrier.size(); i++){
+			for (unsigned int i = 0; i < carrier.size(); i++){
 				stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];
 				//std::cerr << stereo_dc[i] << std::endl;
 			}

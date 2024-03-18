@@ -21,7 +21,7 @@ void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<fl
     
     float prevD;
 
-    for (int i = 0; i < pllIn.size(); i++){
+    for (unsigned int i = 0; i < pllIn.size(); i++){
 
         errorI = pllIn[i]*(block.feedbackI);
         errorQ = pllIn[i]*(-block.feedbackQ);

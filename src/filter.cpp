@@ -81,8 +81,8 @@ void impulseResponseAPF(float gain, unsigned short int num_taps, std::vector<flo
 void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, std::vector<float> &initial_state, const int decimation_factor)
 {
 	y.clear(); y.resize(x.size()/decimation_factor);
-	for (int n = 0; n < x.size(); n+=decimation_factor) {
-		for (int k = 0; k < h.size(); k++){
+	for (unsigned int n = 0; n < x.size(); n+=decimation_factor) {
+		for (unsigned int k = 0; k < h.size(); k++){
 			if (n-k < 0) {
 				y[n/decimation_factor] += h[k]*initial_state[n-k+initial_state.size()];
 			}else{
@@ -100,9 +100,9 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 	y.clear(); y.resize(x.size()*upsample/decimation_factor);
 	int phase = 0;
 	int x_index = 0;
-	for (int n = 0; n < y.size(); n+=1) { //for each final value in y,
+	for (unsigned int n = 0; n < y.size(); n+=1) { //for each final value in y,
 		phase = (n * decimation_factor) % upsample; // phase to start the convolution
-		for (int k = phase; k < h.size(); k+=upsample){ //only take the filter coeffs from the bank used in current y value
+		for (unsigned int k = phase; k < h.size(); k+=upsample){ //only take the filter coeffs from the bank used in current y value
 			x_index = (n*decimation_factor-k)/upsample; //yu = n*decim, xu = yu - k, x = xu / upsample
 			if (x_index < 0) {
 				y[n] += upsample*((h[k]*initial_state[initial_state.size() + x_index])); //index is negative, so this is always valid

@@ -11,7 +11,7 @@ Ontario, Canada
 #include "filter.h"
 #include "fourier.h"
 #include "genfunc.h"
-#include "iofunc.h"
+#include "iofunc.h" 
 #include "logfunc.h"
 #include "mono.h"
 #include "stereo.h"
@@ -47,15 +47,16 @@ int main(int argc, char* argv[])
 				   stereo_mode0, stereo_mode1, stereo_mode2, stereo_mode3,
 				   rds_mode0, rds_mode1, rds_mode2, rds_mode3};
 	*/			   
-	std::thread rf_frontend_thread(&RF_frontend, &func_args);
-	std::thread audio_thread(&stereo_mode0, &func_args);
+	//std::thread rf_frontend_thread(&RF_frontend, &func_args);
+	//std::thread audio_thread(&stereo_mode0, &func_args);
 	
 	//int rf_Fs;
 	//  int rf_decim; 
 	//audio_Fs
 	//audio_Fc
 	//int audio_decim to change 
-	bandtype type;
+
+	//bandtype type;  UNUSED VAR
 
 
 	switch((int)(*argv[1])){
@@ -99,7 +100,7 @@ int main(int argc, char* argv[])
 	}
 
 	std::thread rf_frontend_thread(&RF_frontend, &func_args);
-	switch((int)(*argv[2])){
+	/* switch((int)(*argv[2])){
 		// Type M
 		case 109: 			
 			std::thread audio_thread(&mono_mode0, &func_args);
@@ -115,9 +116,9 @@ int main(int argc, char* argv[])
 		default:
 			shutdown();
 			break;
-	}
+	} */
 	
-	audio_thread.join();
+	//audio_thread.join();
 	rf_frontend_thread.join();
 	
 	//int mode = (int)(*argv[1])-'0';

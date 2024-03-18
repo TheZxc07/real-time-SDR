@@ -14,8 +14,8 @@ void RF_frontend(args* p){
 	unsigned short int rf_taps = 101;
 	int rf_decim = 10;
 	int audio_decim = 5;
-	int audio_Fs = 240e3;
-	int audio_Fc = 16e3;
+	int audio_Fs = 240e3;  //Unused 
+	int audio_Fc = 16e3;	//Unused 
 	int block_size = 1024 * rf_decim * audio_decim;
 	//int block_count = 0;
 	
@@ -37,7 +37,7 @@ void RF_frontend(args* p){
 	state_I.clear(); state_I.resize(rf_h.size()-1, 0.0);
 	state_Q.clear(); state_Q.resize(rf_h.size()-1, 0.0);
 	std::vector<float>* fm_demod;// = std::vector<float>(block_size/rf_decim);
-	std::vector<float>* fm_demod_ptr; 
+	//std::vector<float>* fm_demod_ptr; 
 	float prev_I = 0, prev_Q = 0;
 	std::vector<float>* IQ[] = {&I, &Q};
 	

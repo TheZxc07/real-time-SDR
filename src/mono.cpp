@@ -23,11 +23,10 @@ void mono_mode0(args* p){
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
 	impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
 	
-	float iq_sample;
-	int sample_num = 0;
-	int IQ_index;
-	
-	uint8_t x;
+	//float iq_sample;
+	//int sample_num = 0;    UNUSED
+	//int IQ_index;
+	//uint8_t x;
 		
 	std::vector<uint8_t> IQ_buf = std::vector<uint8_t>(2*block_size);
 	std::vector<float> I = std::vector<float>(block_size);
@@ -40,13 +39,14 @@ void mono_mode0(args* p){
 	state_I.clear();
 	state_Q.clear();
 	std::vector<float>* fm_demod;
-	float prev_I = 0, prev_Q = 0;
 	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
 	std::vector<short> audio = std::vector<short>((block_size/rf_decim)/audio_decim);
 	std::vector<float> state_audio = std::vector<float>(audio_h.size()-1);
-	std::vector<float>* IQ[] = {&I, &Q};
 	std::string sample_string;
-	uint8_t byte;
+
+	//float prev_I = 0, prev_Q = 0;   UNUSED
+	//std::vector<float>* IQ[] = {&I, &Q};
+	//uint8_t byte;
 
 	while(true){
 		
@@ -73,7 +73,7 @@ void mono_mode0(args* p){
 	
 			convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_decim);
 			
-			for (int i = 0; i < audio.size(); i++){
+			for (unsigned int i = 0; i < audio.size(); i++){
 				audio[i] = (short int)(16384*audio_filt[i]);
 			}
 			
@@ -115,7 +115,7 @@ void mono_mode1(){
 	int audio_Fc = 16e3;
 
 	int block_size = 1024 * rf_decim * audio_decim;
-	int block_count = 0;
+	//int block_count = 0;
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
 	impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
@@ -124,7 +124,7 @@ void mono_mode1(){
 	int sample_num = 0;
 	int IQ_index;
 	
-	uint8_t x;
+	//uint8_t x;
 		
 	std::vector<uint8_t> IQ_buf = std::vector<uint8_t>(2*block_size);
 	std::vector<float> I = std::vector<float>(block_size);
@@ -135,13 +135,13 @@ void mono_mode1(){
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
 	std::vector<float> fm_demod = std::vector<float>(block_size/rf_decim);
-	float prev_I = 0, prev_Q = 0;
+	//float prev_I = 0, prev_Q = 0;
 	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
 	std::vector<short> audio = std::vector<short>((block_size/rf_decim)/audio_decim);
 	std::vector<float> state_audio = std::vector<float>(audio_h.size()-1);
 	std::vector<float>* IQ[] = {&I, &Q};
 	std::string sample_string;
-	uint8_t byte;
+	//uint8_t byte;
 
 	while(true){
 		
@@ -201,7 +201,7 @@ void mono_mode2(){
 	int rf_Fc = 100e3;
 	unsigned short int rf_taps = 101;
 	int rf_decim = 10;
-	int audio_decim = 5;
+	//int audio_decim = 5;
 	int audio_Fs = 240e3;
 	int audio_Fc = 16e3;
 
@@ -209,7 +209,7 @@ void mono_mode2(){
 	float down = 800;
 
 	int block_size = (1024 * rf_decim * down)/up; //trying something here
-	int block_count = 0;
+	//int block_count = 0;
 	
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
@@ -221,7 +221,7 @@ void mono_mode2(){
 	int sample_num = 0;
 	int IQ_index;
 	
-	uint8_t x;
+	//uint8_t x;
 	
 	std::vector<uint8_t> IQ_buf = std::vector<uint8_t>(2*block_size);
 	std::vector<float> I = std::vector<float>(block_size);
@@ -232,13 +232,13 @@ void mono_mode2(){
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
 	std::vector<float> fm_demod = std::vector<float>(block_size/rf_decim);
-	float prev_I = 0, prev_Q = 0;
+	//float prev_I = 0, prev_Q = 0;
 	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
 	std::vector<short> audio = std::vector<short>((block_size/rf_decim)*up/down);
 	std::vector<float> state_audio = std::vector<float>(audio_h.size()-1);
 	std::vector<float>* IQ[] = {&I, &Q};
 	std::string sample_string;
-	uint8_t byte;
+	//uint8_t byte;
 	
 	while(true){
 		
@@ -265,7 +265,7 @@ void mono_mode2(){
 
 		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, up, down);
 
-		for (int i = 0; i < audio.size(); i++){
+		for (unsigned int i = 0; i < audio.size(); i++){
 			audio[i] = (short int)(16384*audio_filt[i]);
 			//std::cerr << audio[i/audio_decim] << std::endl;
 		}
@@ -286,7 +286,7 @@ void mono_mode3(){
 	int rf_Fc = 100e3;
 	unsigned short int rf_taps = 101;
 	int rf_decim = 3;
-	int audio_decim = 5;
+	//int audio_decim = 5;
 	int audio_Fs = 384e3;
 	int audio_Fc = 16e3;
 
@@ -294,7 +294,7 @@ void mono_mode3(){
 	float down = 1280;
 
 	int block_size = (1024 * rf_decim * down )/up; //trying something here
-	int block_count = 0;
+	//int block_count = 0;
 	
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
@@ -306,7 +306,7 @@ void mono_mode3(){
 	int sample_num = 0;
 	int IQ_index;
 	
-	uint8_t x;
+	//uint8_t x;
 	
 	std::vector<uint8_t> IQ_buf = std::vector<uint8_t>(2*block_size);
 	std::vector<float> I = std::vector<float>(block_size);
@@ -317,13 +317,13 @@ void mono_mode3(){
 	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
 	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
 	std::vector<float> fm_demod = std::vector<float>(block_size/rf_decim);
-	float prev_I = 0, prev_Q = 0;
+	//float prev_I = 0, prev_Q = 0;
 	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
 	std::vector<short> audio = std::vector<short>((block_size/rf_decim)*up/down);
 	std::vector<float> state_audio = std::vector<float>(audio_h.size()-1);
 	std::vector<float>* IQ[] = {&I, &Q};
 	std::string sample_string;
-	uint8_t byte;
+	//uint8_t byte;
 	
 	while(true){
 		
@@ -350,7 +350,7 @@ void mono_mode3(){
 
 		convolveFIR(audio_filt, fm_demod, audio_h, state_audio, up, down);
 
-		for (int i = 0; i < audio.size(); i++){
+		for (unsigned int i = 0; i < audio.size(); i++){
 			audio[i] = (short int)(16384*audio_filt[i]);
 			//std::cerr << audio[i/audio_decim] << std::endl;
 		}
