@@ -60,7 +60,7 @@ if __name__ == "__main__":
     #freqzPlot(audio_coeff, 240e3, "")
     #plt.show()
 
-    in_fname = "../data/samples5.raw"
+    in_fname = "../data/samples3.raw"
     raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
@@ -99,7 +99,12 @@ if __name__ == "__main__":
     # PSD after extracting mono audio
 
 
-    IPll, QPll = fmPll(genPilot, 114e3, 240e3, 0.5, -6.1*np.pi/8, 0.001)
+    IPll, QPll = fmPll(genPilot, 114e3, 240e3, 0.5, -0*np.pi/8, 0.001)
+    time0 = np.arange(0,50)
+
+    #plt.plot(time0, IPll[:50])
+    #plt.plot(time0, QPll[:50], color = "green")
+    #plt.show()
     #QPll = fmPll(genPilot, 114e3, 240e3, 0.5, np.pi/2, 0.01)
 
     def APF(taps, loc):
@@ -126,7 +131,13 @@ if __name__ == "__main__":
     Qclean = resample_poly(Qclean, 247, 640)
     Qclean = signal.lfilter(rrc, 1.0, Qclean)
 
-    plt.scatter(clean[0:10000], Qclean[0:10000])
+    time1 = np.arange(0,500)
+
+    #plt.plot(time1, clean[:500])
+    #plt.plot(time1, Qclean[:500], color = "green")
+    #plt.show()
+
+
     #plt.scatter(clean[10000:11000], Qclean[10000:11000])
     #plt.scatter(clean[20000:21000], Qclean[20000:21000])
 
@@ -136,15 +147,22 @@ if __name__ == "__main__":
     print(offest)
 
     SymbArr = clean[offest::39] #39 is SPS
+    QSymbArr = Qclean[offest::39]
 
-    time = np.arange(0, 5000)
+    time = np.arange(0, 50)
     time1 = np.arange(0,100)
 
     #fmPlotPSD(ax1, clean, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
-    plotTime(clean[1000:6000], time)
-    plotTime(Qclean[1000:6000], time)
+    plotTime(SymbArr[10:60], time)
+    plt.show()
+    plt.scatter(SymbArr, QSymbArr, s=10)
+    plt.show()
+
+    #plotTime(Qclean[1000:6000], time)
 
     #plotTime(SymbArr[0:100], time1)
+
+
 
     # save PSD plots
     fig.savefig("../data/fmMonoBasic.png")
