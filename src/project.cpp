@@ -36,12 +36,14 @@ int main(int argc, char* argv[])
 		240000,
 		16000,
 		1,
-		1
+		5
 	};
 	
 	if (argc < 3){
 		mono_mode0(&func_args);
 	} 
+	
+	void (*audio_func) (args*); 
 	/*
 	void (*funcs[13])(void) = {shutdown, mono_mode0, mono_mode1, mono_mode2, mono_mode3,
 				   stereo_mode0, stereo_mode1, stereo_mode2, stereo_mode3,
@@ -66,13 +68,14 @@ int main(int argc, char* argv[])
 			func_args.rf_decim = 10;
 			func_args.audio_decim=5;
 			func_args.audio_Fs=240e3;
+			func_args.down = 5;
 			break;
 		case 49:
 			func_args.rf_Fs= 1.44e6;
 			func_args.rf_decim = 4;
 			func_args.audio_decim=9;
 			func_args.audio_Fs=360e3;
-			
+			func_args.down = 9;
 			break;
 		case 50:
 			func_args.rf_Fs= 2.4e6;
@@ -99,26 +102,31 @@ int main(int argc, char* argv[])
 			break;
 	}
 
-	std::thread rf_frontend_thread(&RF_frontend, &func_args);
-	/* switch((int)(*argv[2])){
+	//std::thread rf_frontend_thread(&RF_frontend, &func_args);
+	switch((int)(*argv[2])){
 		// Type M
-		case 109: 			
-			std::thread audio_thread(&mono_mode0, &func_args);
+		case 109: 
+			audio_func = &mono_mode0;
+			std::cerr << "!!" << std::endl;
+			//std::thread audio_thread(&mono_mode0, &func_args);
 			break;
 		// Type S
 		case 115:
-			std::thread audio_thread(&stereo_mode0, &func_args);
+			audio_func = &stereo_mode0;
+			//std::thread audio_thread(&stereo_mode0, &func_args);
 			break;
 		// Type R
 		case 114:
-			std::thread audio_thread(&rds_mode0, &func_args);
+			audio_func = &rds_mode0;
+			//std::thread audio_thread(&rds_mode0, &func_args);
 			break;
 		default:
 			shutdown();
-			break;
-	} */
-	
-	//audio_thread.join();
+		break;
+	}
+	std::thread audio_thread(audio_func, &func_args);
+	std::thread rf_frontend_thread(&RF_frontend, &func_args);
+	audio_thread.join();
 	rf_frontend_thread.join();
 	
 	//int mode = (int)(*argv[1])-'0';

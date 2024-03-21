@@ -3,6 +3,8 @@
 #include "threadsafequeue.h"
 #include "demod.h"
 #include "iofunc.h"
+#include "logfunc.h"
+#include "fourier.h"
 
 void RF_frontend(args* p){
 	
@@ -17,7 +19,7 @@ void RF_frontend(args* p){
 	//int audio_Fs = 240e3;  //Unused 
 	//int audio_Fc = 16e3;	//Unused 
 	int block_size = 1024 * rf_decim * audio_decim;
-	//int block_count = 0;
+	int block_count = 0;
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
 	//impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
@@ -40,6 +42,10 @@ void RF_frontend(args* p){
 	//std::vector<float>* fm_demod_ptr; 
 	float prev_I = 0, prev_Q = 0;
 	std::vector<float>* IQ[] = {&I, &Q};
+	
+	std::vector<float> fmdemodCheck;
+	std::vector<std::complex<float>> fmDemodXf;
+	std::vector<float> XfMag;
 	
 	while(true){
 		
@@ -71,7 +77,24 @@ void RF_frontend(args* p){
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, *fm_demod);
 		//std::cerr << fm_demod << std::endl;
 		
+		if(block_count <= 10)
+		{
+			fmdemodCheck.insert(fmdemodCheck.end(), (*fm_demod).begin(), (*fm_demod).end());
+			if(block_count == 10)
+			{
+				std::vector<float> index;
+				genIndexVector(index, fmdemodCheck.size());
+				logVector("fmdemod", index, fmdemodCheck);
+				DFT(fmdemodCheck, fmDemodXf);
+				computeVectorMagnitude(fmDemodXf, XfMag);
+				genIndexVector(index, XfMag.size());
+				logVector("fmdemodFreq", index, XfMag);
+				exit(1);
+			}
+		}
+		
 		
 		p->queue.push(fm_demod);
+		block_count++;
 	}
 }
