@@ -1,6 +1,6 @@
 #include "demod.h"
 
-void fmDemodNoArctan(const std::vector<float> &I, const std::vector<float> &Q, float prev_I, float prev_Q, std::vector<float> &fm_demod){
+void fmDemodNoArctan(const std::vector<float> &I, const std::vector<float> &Q, float &prev_I, float &prev_Q, std::vector<float> &fm_demod){
 	
 	fm_demod.clear(); fm_demod.resize(I.size());
 	uint i;

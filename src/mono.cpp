@@ -9,13 +9,13 @@ void mono_mode0(args* p){
 	std::vector<float> audio_h;
 	std::vector<float> rf_h;
 	
-	int rf_Fs = 2.4e6;
-	int rf_Fc = 100e3;
-	unsigned short int rf_taps = 101;
-	int rf_decim = 10;
-	int audio_decim = 5;
-	int audio_Fs = 240e3;
-	int audio_Fc = 16e3;
+	int rf_Fs = p->rf_Fs;
+	int rf_Fc = p->rf_Fc;
+	unsigned short int rf_taps = p->rf_taps;
+	int rf_decim = p->rf_decim;
+	int audio_decim = p->audio_decim;
+	int audio_Fs = p->audio_Fs;
+	int audio_Fc = p->audio_Fc;
 
 	int block_size = 1024 * rf_decim * audio_decim;
 	int block_count = 0;

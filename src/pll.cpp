@@ -26,11 +26,8 @@ void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<fl
         errorI = pllIn[i]*(block.feedbackI);
         errorQ = pllIn[i]*(-block.feedbackQ);
 	prevD = errorD;
-        errorD = atan2(errorQ, errorI);
-	
-	if (std::isnan(errorD)){
-	    errorD = prevD;
-	}
+        errorD = errorI ? atan2(errorQ, errorI) : 0;
+
 	
         block.integrator = block.integrator + Ki*errorD;
         block.phaseEst = block.phaseEst + Kp*errorD + block.integrator;

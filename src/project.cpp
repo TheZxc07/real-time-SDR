@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 		// Type M
 		case 109: 
 			audio_func = &mono_mode0;
-			std::cerr << "!!" << std::endl;
+			//std::cerr << "!!" << std::endl;
 			//std::thread audio_thread(&mono_mode0, &func_args);
 			break;
 		// Type S

@@ -73,13 +73,11 @@ void stereo_mode0(args* p){
 		while(!(p->queue.empty())){
 			//std::cerr << "Processing block: " << block_count << "\n";
 			p->queue.wait_and_pop(fm_demod);
-			for (int i = 0; i<100; i++){
-				if (std::isnan((*fm_demod)[i])){
-					std::cerr << "OHNO!!: " << i << " " << block_count << std::endl;
-				}
-			}
+			
+			// 19 KHz pilot tone extraction
 			convolveFIR(extracted_pilot, *fm_demod, pilot_h, extracted_pilot_state, 1); 
-				
+			
+			// Locking a 38 KHz tone to 19 KHz pilot using PLL
 			fmpll(extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0);
 			
 			
@@ -100,20 +98,23 @@ void stereo_mode0(args* p){
 			*/
 			
 			
-		
+			// Stereo channel extraction
 			convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
 
+			// Perform stereo downconversion to baseband by mixing with carrier DSB-SC demodulation.
 			for (unsigned int i = 0; i < carrier.size(); i++){
 				stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];
 				//std::cerr << stereo_dc[i] << std::endl;
 			}
 			
+			// Delay block (convolution with an impulse shifted in time)
 			convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
 			/*
-			for (int i = 0; i < fm_demod->size(); i++){
+			for (int i = 50; i < fm_demod->size(); i++){
 				mono_delay[i] = (*fm_demod)[i-50];
 			}
 			*/
+			
 			/*
 			for (int i = 0; i < (*fm_demod).size() + ((p->rf_taps-1)/2); i++){
 				if (i < ((p->rf_taps-1)/2)) {
@@ -126,9 +127,12 @@ void stereo_mode0(args* p){
 			}
 			*/
 			
+			// Mono channel extraction
 			convolveFIR(mono_filt, mono_delay, audio_h, mono_state, p->audio_decim);
+			// Stereo channel extraction
 			convolveFIR(stereo_filt, stereo_dc, audio_h, stereo_state, p->audio_decim);
 			
+			// Interleaving left and right samples into stereo vector
 			while (stereo_sample < 2*block_size/p->audio_decim){
 				right_sample = (short int)(16384*(mono_filt[stereo_sample >> 1] - stereo_filt[stereo_sample >> 1]));
 				left_sample = (short int)(16384*(mono_filt[stereo_sample >> 1] + stereo_filt[stereo_sample >> 1]));

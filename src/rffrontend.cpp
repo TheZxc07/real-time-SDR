@@ -11,11 +11,11 @@ void RF_frontend(args* p){
 	std::vector<float> audio_h;
 	std::vector<float> rf_h;
 	
-	int rf_Fs = 2.4e6;
-	int rf_Fc = 100e3;
-	unsigned short int rf_taps = 101;
-	int rf_decim = 10;
-	int audio_decim = 5;
+	int rf_Fs = p->rf_Fs;
+	int rf_Fc = p->rf_Fc;
+	unsigned short int rf_taps = p->rf_taps;
+	int rf_decim = p->rf_decim;
+	int audio_decim = p->audio_decim;
 	//int audio_Fs = 240e3;  //Unused 
 	//int audio_Fc = 16e3;	//Unused 
 	int block_size = 1024 * rf_decim * audio_decim;
@@ -77,7 +77,7 @@ void RF_frontend(args* p){
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, *fm_demod);
 		//std::cerr << fm_demod << std::endl;
 		
-		if(block_count <= 10)
+		/*if(block_count <= 10)
 		{
 			fmdemodCheck.insert(fmdemodCheck.end(), (*fm_demod).begin(), (*fm_demod).end());
 			if(block_count == 10)
@@ -92,7 +92,7 @@ void RF_frontend(args* p){
 				exit(1);
 			}
 		}
-		
+		*/
 		
 		p->queue.push(fm_demod);
 		block_count++;
