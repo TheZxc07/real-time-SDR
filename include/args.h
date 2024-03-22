@@ -9,11 +9,11 @@ struct args {
 	int rf_Fc;
 	unsigned short int rf_taps;
 	int rf_decim;
-	int audio_decim;
-	int audio_Fs;
+	float audio_decim;
+	float audio_upsample;
+	int if_Fs;
 	int audio_Fc;
-	float up;
-	float down;
+	int audio_Fs;
 };
 
 #endif // ARGS_H

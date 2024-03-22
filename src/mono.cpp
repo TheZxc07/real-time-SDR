@@ -12,91 +12,43 @@ void mono_mode0(args* p){
 	int rf_Fs = p->rf_Fs;
 	int rf_Fc = p->rf_Fc;
 	unsigned short int rf_taps = p->rf_taps;
-	int rf_decim = p->rf_decim;
+	//int rf_decim = p->rf_decim;
 	int audio_decim = p->audio_decim;
-	int audio_Fs = p->audio_Fs;
+	int audio_upsample = p->audio_upsample;
+	int if_Fs = p->if_Fs;
 	int audio_Fc = p->audio_Fc;
 
-	int block_size = 1024 * rf_decim * audio_decim;
+	int block_size = (1470 * audio_decim)/audio_upsample;
 	int block_count = 0;
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
-	impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
+	impulseResponseLPF(if_Fs*audio_upsample, audio_Fc, rf_taps*audio_upsample, audio_h, audio_upsample);
 	
-	//float iq_sample;
-	//int sample_num = 0;    UNUSED
-	//int IQ_index;
-	//uint8_t x;
-		
-	std::vector<uint8_t> IQ_buf = std::vector<uint8_t>(2*block_size);
-	std::vector<float> I = std::vector<float>(block_size);
-	std::vector<float> Q = std::vector<float>(block_size);
-	std::vector<float> I_ds = std::vector<float>(block_size/rf_decim);
-	std::vector<float> Q_ds = std::vector<float>(block_size/rf_decim);
-	std::vector<float> filt_IQ = std::vector<float>(block_size);
-	std::vector<float> state_I = std::vector<float>(rf_h.size()-1);
-	std::vector<float> state_Q = std::vector<float>(rf_h.size()-1);
-	state_I.clear();
-	state_Q.clear();
 	std::vector<float>* fm_demod;
-	std::vector<float> audio_filt = std::vector<float>(block_size/rf_decim);
-	std::vector<short> audio = std::vector<short>((block_size/rf_decim)/audio_decim);
+	std::vector<float> audio_filt = std::vector<float>(block_size);
+	std::vector<short> audio = std::vector<short>(block_size*audio_upsample/audio_decim);
 	std::vector<float> state_audio = std::vector<float>(audio_h.size()-1);
-	std::string sample_string;
 
 	//float prev_I = 0, prev_Q = 0;   UNUSED
 	//std::vector<float>* IQ[] = {&I, &Q};
 	//uint8_t byte;
 
 	while(true){
-		
-		/*
-		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
-
-		while(sample_num < 2*block_size){
-			iq_sample = ((float)IQ_buf[sample_num]-128.0)/128.0;
-			IQ_index = sample_num & 0x01;
-			(*IQ[IQ_index])[sample_num >> 1] = iq_sample;
-			sample_num += 1;
-		}
-		sample_num = 0;
-		
-		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
 	
-		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
+		std::cerr << "Processing block: " << block_count << "\n";
+		p->queue.wait_and_pop(fm_demod);
 
-		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
-		*/
-		while(!(p->queue.empty())){
-			std::cerr << "Processing block: " << block_count << "\n";
-			p->queue.wait_and_pop(fm_demod);
-	
-			convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_decim);
-			
-			for (unsigned int i = 0; i < audio.size(); i++){
-				audio[i] = (short int)(16384*audio_filt[i]);
-			}
-			
+		convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_upsample, audio_decim);
 		
-			fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
-			
-			
-			delete fm_demod;
-			block_count++;
-			
+		for (unsigned int i = 0; i < audio.size(); i++){
+			audio[i] = (short int)(16384*audio_filt[i]);
 		}
+	
+		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
 		
-		
-		
-		//for (uint i = 0; i < audio_filt.size(); i+=audio_decim){
-			//std::cout << (signed short int)(16384*audio_filt[i]);
-			//std::cerr << (signed short int)(16384*audio_filt[i]) << std::endl;
+		delete fm_demod;
+		block_count++;
 			
-			//if (i == 10*audio_decim){ exit(1);
-			//}
-		//}
-		//std::cerr << block_count << "\n";
-		//block_count += 1;
 		
 	}
 }

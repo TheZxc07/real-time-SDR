@@ -136,13 +136,14 @@ void stereo_mode0(args* p){
 			while (stereo_sample < 2*block_size/p->audio_decim){
 				right_sample = (short int)(16384*(mono_filt[stereo_sample >> 1] - stereo_filt[stereo_sample >> 1]));
 				left_sample = (short int)(16384*(mono_filt[stereo_sample >> 1] + stereo_filt[stereo_sample >> 1]));
-				sample = ((left_sample >> 1) & ((stereo_sample & 0x01) - 1)) | ((right_sample >> 1) & ~((stereo_sample & 0x01) - 1));
+				sample = ((left_sample) & ((stereo_sample & 0x01) - 1)) | ((right_sample) & ~((stereo_sample & 0x01) - 1));
 				
 				stereo[stereo_sample] = sample;
 				stereo_sample++;
 			}
 			stereo_sample = 0;
 			
+			// Writing to standard out pipe for aplay
 			fwrite(&stereo[0], sizeof(short int), stereo.size(), stdout);
 	
 			delete fm_demod;

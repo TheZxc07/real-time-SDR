@@ -33,10 +33,10 @@ int main(int argc, char* argv[])
 		101,
 		10,
 		5,
+		1,
 		240000,
 		16000,
-		1,
-		5
+		48000
 	};
 	
 	if (argc < 3){
@@ -67,33 +67,33 @@ int main(int argc, char* argv[])
 			func_args.rf_Fs= 2.4e6;
 			func_args.rf_decim = 10;
 			func_args.audio_decim=5;
-			func_args.audio_Fs=240e3;
-			func_args.down = 5;
+			func_args.if_Fs=240e3;
+			//func_args.down = 5;
 			break;
 		case 49:
 			func_args.rf_Fs= 1.44e6;
 			func_args.rf_decim = 4;
 			func_args.audio_decim=9;
-			func_args.audio_Fs=360e3;
-			func_args.down = 9;
+			func_args.if_Fs=360e3;
+			//func_args.down = 9;
 			break;
 		case 50:
 			func_args.rf_Fs= 2.4e6;
 			func_args.rf_decim = 10;
-			func_args.audio_decim=5;
-			func_args.audio_Fs=240e3;
-			func_args.up=147;
-			func_args.down=800;
+			func_args.audio_decim=800;
+			func_args.if_Fs=240e3;
+			func_args.audio_upsample=147;
+			//func_args.down=800;
 			// have to add upsample and downsample
 			break;
 		
 		case 51:
 			func_args.rf_Fs=  1.152e6;
 			func_args.rf_decim = 3;
-			func_args.audio_decim=5;
-			func_args.audio_Fs=384e3;
-			func_args.up=147;
-			func_args.down=1280;
+			func_args.audio_decim=1280;
+			func_args.if_Fs=384e3;
+			func_args.audio_upsample=147;
+			//func_args.down=1280;
 			// have to add upsample and downsample
 			break;
 		

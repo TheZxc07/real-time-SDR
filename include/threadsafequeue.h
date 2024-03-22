@@ -9,12 +9,13 @@ template <typename T>
 class ThreadSafeQueue {
 private:
     
+    std::queue<T> data_queue;
     mutable std::mutex m;
     std::condition_variable cv;
 
 public:
-std::queue<T> data_queue;
     ThreadSafeQueue() {}
+    
     void push(const T& value) {
 		std::lock_guard<std::mutex> lock(m);
 		data_queue.push(value);

@@ -16,9 +16,10 @@ void RF_frontend(args* p){
 	unsigned short int rf_taps = p->rf_taps;
 	int rf_decim = p->rf_decim;
 	int audio_decim = p->audio_decim;
+	int audio_upsample = p->audio_upsample;
 	//int audio_Fs = 240e3;  //Unused 
 	//int audio_Fc = 16e3;	//Unused 
-	int block_size = 1024 * rf_decim * audio_decim;
+	int block_size = (1470 * rf_decim * audio_decim)/audio_upsample;
 	int block_count = 0;
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);

@@ -19,14 +19,14 @@ void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<fl
 
     float errorI, errorQ, errorD = 0;
     
-    float prevD;
+    float prevD = 0;
 
     for (unsigned int i = 0; i < pllIn.size(); i++){
 
         errorI = pllIn[i]*(block.feedbackI);
         errorQ = pllIn[i]*(-block.feedbackQ);
 	prevD = errorD;
-        errorD = errorI ? atan2(errorQ, errorI) : 0;
+        errorD = errorI ? atan2(errorQ, errorI) : prevD;
 
 	
         block.integrator = block.integrator + Ki*errorD;
