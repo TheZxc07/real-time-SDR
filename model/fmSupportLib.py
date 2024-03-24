@@ -9,7 +9,8 @@
 
 import numpy as np
 import math, cmath
-
+from scipy import signal
+import matplotlib.pyplot as plt
 #
 # you should use the demodulator based on arctan given below as a reference
 #
@@ -78,6 +79,32 @@ def DFT(x):
 
 	# return the vector that holds the frequency bins
 	return Xf
+
+
+def freqzPlot(coeff, Fs, msg):
+
+	# find the frequency response using freqz from SciPy:
+	# https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.freqz.html
+	w, h = signal.freqz(coeff)
+
+	# Reminder: np.pi rad/sample is actually the Nyquist frequency
+	w = w * Fs/(2*np.pi) # needed to draw the frequency on the X axis
+
+	# plots the magnitude response where the x axis is normalized in rad/sample
+	fig, ax1 = plt.subplots()
+	ax1.set_title('Digital filter frequency response (' + msg + ')')
+	ax1.plot(w, 20 * np.log10(abs(h)), 'b')
+	ax1.set_ylabel('Amplitude [dB]', color='b')
+	ax1.set_xlabel('Frequency [Hz]')
+
+	# uncomment the lines below if you wish to inspect the phase response
+	# Note: as important as the phase response is for some applications,
+	# it is not critical at this stage because we expect a linear phase in the passband
+
+	# ax2 = ax1.twinx()
+	# angles = np.unwrap(np.angle(h))
+	# ax2.plot(w, angles, 'g')
+	# ax2.set_ylabel('Angle (radians)', color='g')
 
 # custom function to estimate PSD based on the Bartlett method
 # this is less accurate than the Welch method from matplotlib
