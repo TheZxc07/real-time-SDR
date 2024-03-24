@@ -3,6 +3,7 @@
 #include "filter.h"
 #include "args.h"
 #include "threadsafequeue.h"
+#include "demod.h"
 
 void mono_mode0(args* p){
 	
