@@ -1,7 +1,7 @@
 #include "pll.h"
 #include "dy4.h"
 #include <iomanip>
-void fmpll(int &cont,std::vector<float> &phaseEstCheck, std::vector<float> &errorDCheck, const std::vector<float> &pllIn, float freq, float Fs, std::vector<float> &pllOut, pllblock_args &block, float ncoScale, float phaseAdjust, float normBandwidth){
+void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<float> &pllOut, pllblock_args &block, float ncoScale, float phaseAdjust, float normBandwidth){
     float Cp = 2.666;
     float Ci = 3.555;
 
@@ -59,5 +59,5 @@ void fmpll(int &cont,std::vector<float> &phaseEstCheck, std::vector<float> &erro
     //std::cerr << "=================================" << std::endl;
     block.lastCarrier = pllOut[pllOut.size()-1];
     //pllOut.erase(pllOut.end() - 1, pllOut.end());
-    cont++;
+    //cont++;
 }

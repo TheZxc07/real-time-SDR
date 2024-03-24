@@ -61,10 +61,12 @@ public:
 		//data_queue.pop();
 		lock.unlock();
 	}
+	/*
     bool empty() const {
 		std::lock_guard<std::mutex> lock(m);
 		return data_queue.empty();
 	}
+	*/
 	
 	void prepare(){
 		std::lock_guard<std::mutex> lock(m);

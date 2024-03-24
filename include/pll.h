@@ -17,7 +17,7 @@ struct pllblock_args {
 };
 
 
-void fmpll(int &, std::vector<float> &,std::vector<float> &,const std::vector<float> &, float, float, std::vector<float> &, pllblock_args &, float = 1.0, float = 0.0, float = 0.01);
+void fmpll(const std::vector<float> &, float, float, std::vector<float> &, pllblock_args &, float = 1.0, float = 0.0, float = 0.01);
 
 
 #endif // PLLBLOCK_ARGS_H

@@ -107,7 +107,7 @@ void stereo_mode0(args* p){
 		// 19 KHz pilot tone extraction
 		convolveFIR(extracted_pilot, *fm_demod, pilot_h, extracted_pilot_state, 1);
 		// Locking a 38 KHz tone to 19 KHz pilot using PLL
-		fmpll(cont, phaseEstCheck, errorDCheck, extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0, 0, 0.01);
+		fmpll(extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0, 0, 0.01);
 		// Stereo channel extraction
 		//convolveFIR(carrier_bpf, carrier, carrier_h, carrier_state, 1);
 		convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
