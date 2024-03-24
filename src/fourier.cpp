@@ -33,7 +33,63 @@ void computeVectorMagnitude(const std::vector<std::complex<float>> &Xf, std::vec
 
 // add your own code to estimate the PSD
 
-//////////////////////////////////////////////////////
+void estimatePSD(const std::vector<float> &samples, int nfft, int Fs, std::vector<float> &freq, std::vector<float> &psd_est){
+
+	float freq_bins = nfft;
+
+	float df = Fs/freq_bins;
+
+	freq.resize(freq_bins/2);
+  
+  
+
+	for (int i = 0; i < freq.size(); i++){
+		freq[i] = (i*df);
+	}
+  std::cerr << "HELLO" << std::endl;
+
+	std::vector<float> hann;
+	hann.resize(freq_bins, 0);
+	
+	for (int j = 0; j < hann.size(); j++){
+		hann[j] = std::pow(std::sin(j*PI/freq_bins), 2);
+	}
+
+	std::vector<float> psd_list;
+	int no_segments = (int)std::floor(samples.size()/freq_bins);
+  
+
+	for (int k = 0; k < no_segments; k++){
+		std::vector<float> windowed_samples = std::vector<float>(samples.begin() + k*freq_bins, samples.begin() + (k+1)*freq_bins);
+
+		for (int w = 0; w < windowed_samples.size(); w++){
+			windowed_samples[w] *= hann[w];
+		}
+
+		std::vector<std::complex<float>> Xf;
+		DFT(windowed_samples, Xf);
+
+		std::vector<std::complex<float>> Xf_positive = std::vector<std::complex<float>>(Xf.begin(), Xf.begin() + (int)freq_bins/2);
+		std::vector<float> psd_seg;
+
+		psd_seg.resize(Xf_positive.size(), 0);
+		for (int l = 0; l < Xf_positive.size(); l++){
+			psd_seg[l] = 2*(1/(Fs*freq_bins/2))*std::abs(Xf_positive[l])*std::abs(Xf_positive[l]);
+			psd_seg[l] = 10*std::log10(psd_seg[l]);
+			psd_list.push_back(psd_seg[l]);
+		}
+
+	}
+
+  psd_est.resize((int)freq_bins/2, 0);
+
+	for (int m = 0; m < (int)freq_bins/2; m++){
+		for (int n = 0; n < no_segments; n++){
+			psd_est[m] += psd_list[m+n*((int)freq_bins/2)];
+		}
+		psd_est[m] = psd_est[m] / no_segments;
+	}
+}
 
 // added IDFT and FFT-related functions
 

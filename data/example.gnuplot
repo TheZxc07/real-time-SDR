@@ -9,16 +9,13 @@ set multiplot layout 2,1 scale 1.0,1.0  # set two plots for this figure
 # time domain
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'Sample #'                   # set x-axis label
-set yrange [-1:1]                       # set y plot range
-set xrange [5000:5300]                      # set x plot range
-plot '../data/NCO.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
+set yrange [-80:0]                       # set y plot range
+set xrange [0:120]                      # set x plot range
+plot '../data/PSD_stereo_dc_1pass.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
 
-# freq domain (Fourier)
-# time domain
+
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'Sample #'                   # set x-axis label
-set yrange [-0.01:0.01]                       # set y plot range
-set xrange [5000:5300]                      # set x plot range
-plot '../data/PLL.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
-
-unset multiplot
+set yrange [-80:0]                       # set y plot range
+set xrange [0:120]                      # set x plot range
+plot '../data/carrier_PSD.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle

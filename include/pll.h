@@ -8,15 +8,16 @@
 
 
 struct pllblock_args {
-    float &feedbackI;
-    float &feedbackQ;
-    float &integrator;
-    float &phaseEst;
-    float &trigOffset;
+    float feedbackI;
+    float feedbackQ;
+    float integrator;
+    float phaseEst;
+    double trigOffset;
+    float lastCarrier;
 };
 
 
-void fmpll(const std::vector<float> &, float, float, std::vector<float> &, pllblock_args &, float = 1.0, float = 0.0, float = 0.01);
+void fmpll(int &, std::vector<float> &,std::vector<float> &,const std::vector<float> &, float, float, std::vector<float> &, pllblock_args &, float = 1.0, float = 0.0, float = 0.01);
 
 
 #endif // PLLBLOCK_ARGS_H

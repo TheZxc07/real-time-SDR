@@ -50,12 +50,12 @@ void RF_frontend(args* p){
 	
 	while(true){
 		
-		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
+		std::cin.read(reinterpret_cast<char*>(&IQ_buf[0]), 2*block_size*sizeof(char));
 		
 		fm_demod = new std::vector<float>(block_size/rf_decim);
 
 		while(sample_num < 2*block_size){
-			iq_sample = ((float)IQ_buf[sample_num]-128.0)/128.0;
+			iq_sample = float(((unsigned char)IQ_buf[sample_num]-128.0)/128.0);
 			IQ_index = sample_num & 0x01;
 			(*IQ[IQ_index])[sample_num >> 1] = iq_sample;
 			sample_num += 1;
@@ -63,37 +63,9 @@ void RF_frontend(args* p){
 		sample_num = 0;
 		
 		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
-		/*
-		for (int i = 0; i < block_size; i+=rf_decim){
-			I_ds[i/rf_decim] = filt_IQ[i];
-		}
-		*/
 		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
-		/*
-		for (int i = 0; i < block_size; i+=rf_decim){
-			Q_ds[i/rf_decim] = filt_IQ[i];
-		}
-		*/
 		
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, *fm_demod);
-		//std::cerr << fm_demod << std::endl;
-		
-		/*if(block_count <= 10)
-		{
-			fmdemodCheck.insert(fmdemodCheck.end(), (*fm_demod).begin(), (*fm_demod).end());
-			if(block_count == 10)
-			{
-				std::vector<float> index;
-				genIndexVector(index, fmdemodCheck.size());
-				logVector("fmdemod", index, fmdemodCheck);
-				DFT(fmdemodCheck, fmDemodXf);
-				computeVectorMagnitude(fmDemodXf, XfMag);
-				genIndexVector(index, XfMag.size());
-				logVector("fmdemodFreq", index, XfMag);
-				exit(1);
-			}
-		}
-		*/
 		
 		p->queue.push(fm_demod);
 		block_count++;

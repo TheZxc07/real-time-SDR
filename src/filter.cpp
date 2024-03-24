@@ -57,7 +57,9 @@ void impulseResponseBPF(float Fs, float* Fb, unsigned short int num_taps, std::v
 	h.clear(); h.resize(num_taps, 0.0);
 	
 	float normalized_center = ((Fb[1] + Fb[0])/2)/(Fs/2);
-	float normalized_pass = ((Fb[1] - Fb[0])/2)/(Fs/2);
+	//std::cerr << "Normalized Center: " << normalized_center << std::endl;
+	float normalized_pass = ((Fb[1] - Fb[0]))/(Fs/2);
+	//std::cerr << "Normalized Pass: " << normalized_pass << std::endl;
 	
 	for (int i = 0; i < num_taps; i++){
 		if (i == (num_taps-1.0)/2.0){
