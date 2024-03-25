@@ -22,7 +22,7 @@ import math
 
 
 
-def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01):
+def fmPll(pllIn, freq, Fs, state, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01):
 
 
 
@@ -106,17 +106,17 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
 
 	# initialize internal state
 
-	integrator = 0.0
+	integrator = state[0]
 
-	phaseEst = 0.0
+	phaseEst = state[1]
 
-	feedbackI = 1.0
+	feedbackI = state[2]
 
-	feedbackQ = 0.0
+	feedbackQ = state[3]
 
-	ncoOut[0], ncoOutQ[0] = 1.0, 0.0 #I think 0.0, because sin(0) = 0? 
+	ncoOut[0], ncoOutQ[0] = state[4], state[5] #I think 0.0, because sin(0) = 0? 
 
-	trigOffset = 0
+	trigOffset = state[6]
 
 	# note: state saving will be needed for block processing
 
@@ -166,13 +166,13 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
 		ncoOutQ[k+1] = math.sin(trigArg*ncoScale + phaseAdjust)
 
 
-
+	state = [integrator, phaseEst, feedbackI, feedbackQ, np.cos(trigArg*ncoScale), np.sin(trigArg*ncoScale), trigOffset]
 
 	# for stereo only the in-phase NCO component should be returned
 
 	# for block processing you should also return the state
 
-	return ncoOut, ncoOutQ
+	return ncoOut, ncoOutQ, state
 
 	# for RDS add also the quadrature NCO component to the output
 
