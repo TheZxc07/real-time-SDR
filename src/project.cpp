@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 	};
 	
 	if (argc < 3){
-		mono_mode0(&func_args);
+		mono(&func_args);
 	} 
 	
 	void (*audio_func) (args*); 
@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 	//std::thread audio_thread(&stereo_mode0, &func_args);
 	
 	//int rf_Fs;
-	//  int rf_decim; 
+	//int rf_decim; 
 	//audio_Fs
 	//audio_Fc
 	//int audio_decim to change 
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 	switch((int)(*argv[2])){
 		// Type M
 		case 109: 
-			audio_func = &mono_mode0;
+			audio_func = &mono;
 			//std::cerr << "!!" << std::endl;
 			//std::thread audio_thread(&mono_mode0, &func_args);
 			break;
