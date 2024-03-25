@@ -16,8 +16,8 @@ void rds(args* p){
 	int audio_upsample = p->audio_upsample;
 	int if_Fs = p->if_Fs;
     unsigned short int rf_taps = p->rf_taps;
-    int block_size = (2470 * audio_decim)/audio_upsample;
-    int sps = p->symbol_fs;
+    int block_size = (1470 * audio_decim)/audio_upsample;
+    int sps = p->symbol_Fs;
 
     std::vector<float> rds_band;
     std::vector<float> rds_band_squared; rds_band_squared.resize(block_size, 0.0);
@@ -54,6 +54,8 @@ void rds(args* p){
 
         // RDS band extraction through BPF
         convolveFIR(rds_band, *fm_demod, rds_h, rds_band_state, 1);
+
+        p->queue.prepare();
 
         // Squaring Non-Linearity to generate pilot at 114 KHz
         for (int i = 0; i < block_size; i++){

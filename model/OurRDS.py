@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
     # select a block_size that is a multiple of KB
     # and a multiple of decimation factors
-    block_size = 1024 * rf_decim * audio_decim * 2
+    block_size = 1470 * rf_decim * audio_decim * 2
     block_count = 0
 
     # states needed for continuity in block processing
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     test_arr = []
 
 
-    in_fname = "./data/samples5.raw"
+    in_fname = "../data/samples4.raw"
     raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
@@ -313,7 +313,8 @@ if __name__ == "__main__":
         #####COMBINE THE FOLLOWING TWO IN THE C++#####
         baseband = resample_poly(baseband, 247, 640)
         amplified, amplified_state = signal.lfilter(rrc, 1.0, baseband, zi = amplified_state)
-
+        print(amplified)
+        #exit(1)
         #################DO IT AGAIN FOR Q ##########################
 
         #Qmixed = 2*data_delayed*QPll[:-1]

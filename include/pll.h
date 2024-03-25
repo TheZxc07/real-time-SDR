@@ -12,12 +12,8 @@ struct pllblock_args {
     float feedbackQ;
     float integrator;
     float phaseEst;
-<<<<<<< HEAD
-    float trigOffset;
-=======
     double trigOffset;
     float lastCarrier;
->>>>>>> origin/stereo
 };
 
 
