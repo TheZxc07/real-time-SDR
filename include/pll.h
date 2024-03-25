@@ -8,11 +8,11 @@
 
 
 struct pllblock_args {
-    float &feedbackI;
-    float &feedbackQ;
-    float &integrator;
-    float &phaseEst;
-    float &trigOffset;
+    float feedbackI;
+    float feedbackQ;
+    float integrator;
+    float phaseEst;
+    float trigOffset;
 };
 
 

@@ -14,6 +14,7 @@ struct args {
 	int if_Fs;
 	int audio_Fc;
 	int audio_Fs;
+	int symbol_fs;
 };
 
 #endif // ARGS_H

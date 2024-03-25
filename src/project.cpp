@@ -36,7 +36,8 @@ int main(int argc, char* argv[])
 		1,
 		240000,
 		16000,
-		48000
+		48000,
+		39
 	};
 	
 	if (argc < 3){

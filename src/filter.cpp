@@ -57,7 +57,7 @@ void impulseResponseBPF(float Fs, float* Fb, unsigned short int num_taps, std::v
 	h.clear(); h.resize(num_taps, 0.0);
 	
 	float normalized_center = ((Fb[1] + Fb[0])/2)/(Fs/2);
-	float normalized_pass = ((Fb[1] - Fb[0])/2)/(Fs/2);
+	float normalized_pass = ((Fb[1] - Fb[0]))/(Fs/2);
 	
 	for (int i = 0; i < num_taps; i++){
 		if (i == (num_taps-1.0)/2.0){
@@ -75,6 +75,25 @@ void impulseResponseAPF(float gain, unsigned short int num_taps, std::vector<flo
 	h.clear(); h.resize(num_taps, 0.0);
 	
 	h[(num_taps-1.0)/2.0] = gain;
+}
+
+void impulseResponseRRC(float Fs, unsigned short int num_taps, std::vector<float> &h){
+	float T_symbol = 1/2375.0;
+	float beta = 0.90;
+	float t;
+
+	h.clear(); h.resize(num_taps, 0.0);
+
+	for(int i = 0; i < num_taps; i++){
+		t =((float)(i-num_taps)/2.0)/Fs;
+		if(t==0.0){
+			h[i] = 1.0 + beta*((4.0/PI)-1);
+		} else if((t==(-T_symbol/(4.0*beta))) | (t==(T_symbol/(4.0*beta)))){
+			h[i] = (beta/sqrt(2.0))*((1-2.0/PI)*(sin(PI/(4.0*beta)))) + ((1-2.0/PI)*(cos(PI/(4*beta))));
+		} else{
+			h[i] = (sin(PI*t*(1-beta)/T_symbol) + 4.0*beta*(t/T_symbol)*cos(PI*t*(1+beta)/T_symbol))/(PI*t*(1-(4.0*beta*t/T_symbol)*(4.0*beta*t/T_symbol))/T_symbol);
+		}
+	}
 }
 
 // function to compute the filtered output "y" by doing the convolution
