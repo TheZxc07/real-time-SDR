@@ -80,6 +80,26 @@ def DFT(x):
 	# return the vector that holds the frequency bins
 	return Xf
 
+def fmDemod(I, Q, i_prev = 0.0, q_prev = 0.0):
+	fm_demod = np.empty(len(I))
+
+	for k in range(len(I)):
+
+		i_diff = I[k] - i_prev
+		q_diff = Q[k] - q_prev
+
+		i_prev = I[k]
+		q_prev = Q[k]
+
+		num = I[k]*q_diff - Q[k]*i_diff
+		denom = I[k]**2 + Q[k]**2
+
+		if denom == 0.0:
+			fm_demod[k] = 0.0 #numpy throws warnings for x/0 and 0/0
+		else:
+			fm_demod[k] = num/denom
+
+	return fm_demod, i_prev, q_prev
 
 def freqzPlot(coeff, Fs, msg):
 

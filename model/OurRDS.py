@@ -24,7 +24,7 @@ def resample():
 def CDR(SPS, signal):
     maxi, maxv, sum = 0,0, 0 #max index, max value
     for i in range(SPS):
-        for x in range(500,1000): #10 is arbitrary
+        for x in range(10): #10 is arbitrary
             sum += abs(signal[x*SPS + i])
         
         if sum > maxv:
@@ -43,21 +43,54 @@ def ManUtd(samples): #finds symbols that are invalid HH, LL, returns if more are
 
     return score > 0
 
-def ManDecode(samples):
+def ManDecode(samples, block_count : int,  halfSymbol : int, start : int = 0):
     bits = [] #will  have length half of samples
-    for i, n in enumerate(samples[ManUtd(samples)::2]):
-        bits.append( n > 0 )
+    #print(len(samples))
 
-    return bits 
+    #if this block is starting at 1, use the previous blocks last and this ones 0
+    if start:
+        bits.append(halfSymbol) #first half of man symbol = symbol
 
-def diffDecode(bits):
+    if block_count == 0:
+        score = 0
+        #brute force, check with each offset
+        for i in range(0, len(samples)-1, 2):
+            score += samples[i] ^ samples[i+1]
+
+        for i in range(1, len(samples)-1, 2):
+            score -= samples[i] ^ samples[i+1]
+        start = score < 0
+
+    #start = ManUtd(samples)
+    
+    for i, n in enumerate(samples[start:-1:2]):
+        bits.append( n )
+
+    if ((len(samples) - start) % 2 == 1): #if a leftover bit
+        halfSymbol = samples[-1]
+        start = True
+    else:
+        start = False
+
+    return bits, halfSymbol, start
+
+def diffDecode(bits, last, block_num):
     decoded = [] #length is equal bits
-    decoded.append(bits[0])
+    if (block_num == 0):
+        decoded.append(bits[0])
+    else:
+        decoded.append(bits[0]^last)
     #print(bits)
-    for i in range(len(bits[1:])):
+    for i in range(1, len(bits)):
         decoded.append(bits[i]^bits[i-1])
 
-    return decoded
+    return decoded, bits[-1]
+
+def APF(taps, loc):
+    taps = np.zeros(taps)
+    taps[50] = 1
+
+    return taps
 
 
 
@@ -69,138 +102,254 @@ audio_decim = 5
 # in-lab (il_vs_th = 0) vs takehome (il_vs_th = 1)
 il_vs_th = 0
 
+audio_coeff = signal.firwin(rf_taps, [54e3/(5*audio_Fs/2), 60e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
+threeKHz_coeff = signal.firwin(rf_taps, 3e3/(5*audio_Fs/2), window=("hann")) #given audio_fs is 48, should be 240
+rrc = impulseResponseRootRaisedCosine(92625, 101)
+
+# coefficients for the front-end low-pass filter
+rf_coeff = signal.firwin(rf_taps, rf_Fc/(rf_Fs/2), window=('hann'))
+pll_clean_coeff = signal.firwin(rf_taps, [113.5e3/(5*audio_Fs/2), 114.5e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
+
+
+rdsAPF = APF(rf_taps, 50)
+
+# Constants
+syndrome = [383, 14, 303, 663, 748]
+offset_pos = [0, 1, 2, 3, 2]
+offset_word = [252, 408, 360, 436, 848]
+
+# see Annex B, page 64 of the standard
+def calc_syndrome(x, mlen):
+    reg = 0
+    plen = 10
+    for ii in range(mlen, 0, -1):
+        reg = (reg << 1) | ((x >> (ii-1)) & 0x01)
+        if (reg & (1 << plen)):
+            reg = reg ^ 0x5B9
+    for ii in range(plen, 0, -1):
+        reg = reg << 1
+        if (reg & (1 << plen)):
+            reg = reg ^ 0x5B9
+    return reg & ((1 << plen) - 1) # select the bottom plen bits of reg
+
+# Annex F of RBDS Standard Table F.1 (North America) and Table F.2 (Europe)
+#              Europe                   North America
+pty_table = [["Undefined",             "Undefined"],
+            ["News",                  "News"],
+            ["Current Affairs",       "Information"],
+            ["Information",           "Sports"],
+            ["Sport",                 "Talk"],
+            ["Education",             "Rock"],
+            ["Drama",                 "Classic Rock"],
+            ["Culture",               "Adult Hits"],
+            ["Science",               "Soft Rock"],
+            ["Varied",                "Top 40"],
+            ["Pop Music",             "Country"],
+            ["Rock Music",            "Oldies"],
+            ["Easy Listening",        "Soft"],
+            ["Light Classical",       "Nostalgia"],
+            ["Serious Classical",     "Jazz"],
+            ["Other Music",           "Classical"],
+            ["Weather",               "Rhythm & Blues"],
+            ["Finance",               "Soft Rhythm & Blues"],
+            ["Children’s Programmes", "Language"],
+            ["Social Affairs",        "Religious Music"],
+            ["Religion",              "Religious Talk"],
+            ["Phone-In",              "Personality"],
+            ["Travel",                "Public"],
+            ["Leisure",               "College"],
+            ["Jazz Music",            "Spanish Talk"],
+            ["Country Music",         "Spanish Music"],
+            ["National Music",        "Hip Hop"],
+            ["Oldies Music",          "Unassigned"],
+            ["Folk Music",            "Unassigned"],
+            ["Documentary",           "Weather"],
+            ["Alarm Test",            "Emergency Test"],
+            ["Alarm",                 "Emergency"]]
+pty_locale = 1 # set to 0 for Europe which will use first column instead
+
+# page 72, Annex D, table D.2 in the standard
+coverage_area_codes = ["Local",
+                    "International",
+                    "National",
+                    "Supra-regional",
+                    "Regional 1",
+                    "Regional 2",
+                    "Regional 3",
+                    "Regional 4",
+                    "Regional 5",
+                    "Regional 6",
+                    "Regional 7",
+                    "Regional 8",
+                    "Regional 9",
+                    "Regional 10",
+                    "Regional 11",
+                    "Regional 12"]
 
 
 if __name__ == "__main__":
 
     # read the raw IQ data from the recorded file
     # IQ data is assumed to be in 8-bits unsigned (and interleaved)
-    audio_coeff = signal.firwin(rf_taps, [54e3/(5*audio_Fs/2), 60e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
-    threeKHz_coeff = signal.firwin(rf_taps, 3e3/(5*audio_Fs/2), window=("hann")) #given audio_fs is 48, should be 240
-    rrc = impulseResponseRootRaisedCosine(92625, 101)
 
-    d = DFT(audio_coeff)
+
+    #d = DFT(audio_coeff)
 
     #freqzPlot(audio_coeff, 240e3, "")
     #plt.show()
 
-    in_fname = "../data/samples5.raw"
-    raw_data = np.fromfile(in_fname, dtype='uint8')
+    # select a block_size that is a multiple of KB
+    # and a multiple of decimation factors
+    block_size = 1024 * rf_decim * audio_decim * 2
+    block_count = 0
+
+    # states needed for continuity in block processing
+    state_i_lpf_100k = np.zeros(rf_taps-1)
+    state_q_lpf_100k = np.zeros(rf_taps-1)
+    state_phase = 0
+
+    # add state as needed for the mono channel filter
+    audio_taps = 101
+    state_mono = np.zeros(audio_taps - 1)
+
+    # audio buffer that stores all the audio blocks
+    audio_data = np.array([]) # used to concatenate filtered blocks (audio data)
+
+    offest = 0
+
+    state_phase = 0.0
+    audio_state = np.zeros(audio_taps - 1)
+    state_mono = np.zeros(audio_taps - 1)
+    pilot_state = np.zeros(audio_taps - 1)
+    delay_state = np.zeros(audio_taps - 1)
+    baseband_state = np.zeros(audio_taps - 1)
+    amplified_state = np.zeros(audio_taps - 1)
+    pll_state = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0]
+
+    manDecodeHalfSymbol = 0
+    manBlockStart = 0
+
+    man = [] # for testing only
+    S = []
+
+    decodeBuffer = 0 #buffer between decode blocks
+
+
+    in_fname = "./data/samples3.raw"
+    raw_data = np.fromfile(in_fname, dtype='uint8')[:5000000]
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
-    raw_data = raw_data[:int(len(raw_data)/10)]
     iq_data = (np.float32(raw_data) - 128.0)/128.0
     print("Reformatted raw RF data to 32-bit float format (" + str(iq_data.size * iq_data.itemsize) + " bytes)")
+    bits = []
+    print(len(iq_data))
 
-    # set up the subfigures for plotting
-    #subfig_height = np.array([0.8, 2, 1.6]) # relative heights of the subfigures
-    #plt.rc('figure', figsize=(7.5, 7.5))	# the size of the entire figure
-    #fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, gridspec_kw={'height_ratios': subfig_height})
-    #fig.subplots_adjust(hspace = .6)
-
-    # coefficients for the front-end low-pass filter
-    rf_coeff = signal.firwin(rf_taps, rf_Fc/(rf_Fs/2), window=('hann'))
-
-    # filter to extract the FM channel (I samples are even, Q samples are odd)
-    i_filt = signal.lfilter(rf_coeff, 1.0, iq_data[0::2])
-    q_filt = signal.lfilter(rf_coeff, 1.0, iq_data[1::2])
-
-    # downsample the FM channel
-    i_ds = i_filt[::rf_decim]
-    q_ds = q_filt[::rf_decim]
+    while (block_count+1)*block_size < len(iq_data):
 
 
-    fm_demod, dummy = fmDemodArctan(i_ds, q_ds)
+        # set up the subfigures for plotting
+        #subfig_height = np.array([0.8, 2, 1.6]) # relative heights of the subfigures
+        #plt.rc('figure', figsize=(7.5, 7.5))	# the size of the entire figure
+        #fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, gridspec_kw={'height_ratios': subfig_height})
+        #fig.subplots_adjust(hspace = .6)
 
-    audio_filt = signal.lfilter(audio_coeff, 1.0, fm_demod)
+        print('Processing block ' + str(block_count))
 
-    #####START OF RDS#######
+        # filter to extract the FM channel (I samples are even, Q samples are odd)
+        i_filt, state_i_lpf_100k = signal.lfilter(rf_coeff, 1.0, \
+                iq_data[(block_count)*block_size:(block_count+1)*block_size:2],
+                zi=state_i_lpf_100k)
+        q_filt, state_q_lpf_100k = signal.lfilter(rf_coeff, 1.0, \
+                iq_data[(block_count)*block_size+1:(block_count+1)*block_size:2],
+                zi=state_q_lpf_100k)
 
-    linSquare = np.square(audio_filt)
+        ## filter to extract the FM channel (I samples are even, Q samples are odd)
+        #i_filt = signal.lfilter(rf_coeff, 1.0, iq_data[0::2])
+        #q_filt = signal.lfilter(rf_coeff, 1.0, iq_data[1::2])
 
-    pll_clean_coeff = signal.firwin(rf_taps, [113.5e3/(5*audio_Fs/2), 114.5e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
-    genPilot = signal.lfilter(pll_clean_coeff, 1.0, linSquare)
-    # PSD after extracting mono audio
-
-
-    IPll, QPll = fmPll(genPilot, 114e3, 240e3, 0.5, -0*np.pi/8, 0.001)
-    time0 = np.arange(0,50)
-
-    #plt.plot(time0, IPll[:50])
-    #plt.plot(time0, QPll[:50], color = "green")
-    #plt.show()
-    #QPll = fmPll(genPilot, 114e3, 240e3, 0.5, np.pi/2, 0.01)
-
-    def APF(taps, loc):
-        taps = np.zeros(taps)
-        taps[50] = 1
-
-        return taps
-
-    rdsAPF = APF(rf_taps, 50)
-
-    data_delayed = signal.lfilter(rdsAPF, 1.0, audio_filt) 
-
-    mixed = 2*data_delayed*IPll[:-1]
-    clean = signal.lfilter(threeKHz_coeff, 1.0, mixed)
-
-    clean = resample_poly(clean, 247, 640)
-    clean = signal.lfilter(rrc, 1.0, clean)
-
-    #################DO IT AGAIN FOR Q ##########################
-
-    Qmixed = 2*data_delayed*QPll[:-1]
-    Qclean = signal.lfilter(threeKHz_coeff, 1.0, Qmixed)
-
-    Qclean = resample_poly(Qclean, 247, 640)
-    Qclean = signal.lfilter(rrc, 1.0, Qclean)
-
-    time1 = np.arange(0,1500)
-
-    plt.plot(time1, clean[:1500])
-    plt.plot(time1, Qclean[:1500], color = "green")
-    plt.show()
+        # downsample the FM channel
+        i_ds = i_filt[::rf_decim]
+        q_ds = q_filt[::rf_decim]
 
 
-    #plt.scatter(clean[10000:11000], Qclean[10000:11000])
-    #plt.scatter(clean[20000:21000], Qclean[20000:21000])
+        fm_demod, state_phase= fmDemodArctan(i_ds, q_ds, state_phase)
 
-    plt.show()
+        audio_filt, audio_state = signal.lfilter(audio_coeff, 1.0, fm_demod, zi=audio_state)
 
-    offest = CDR(39, clean)
-    print(offest)
+        #####START OF RDS#######
 
-    SymbArr = clean[offest::39] #39 is SPS
-    QSymbArr = Qclean[offest::39]
+        linSquare = np.square(audio_filt)
 
-    time = np.arange(0, 50)
-    time1 = np.arange(0,100)
 
-    manDec = ManDecode(SymbArr)
-    bits = diffDecode(manDec)
+        genPilot, pilot_state = signal.lfilter(pll_clean_coeff, 1.0, linSquare, zi=pilot_state)
+        # PSD after extracting mono audio
+
+
+        IPll, QPll, pll_state = fmPll(genPilot, 114e3, 240e3, pll_state, 0.5, -0*np.pi/8, 0.001)
+        time0 = np.arange(0,50)
+
+        #plt.plot(time0, IPll[:50])
+        #plt.plot(time0, QPll[:50], color = "green")
+        #plt.show()
+        #QPll = fmPll(genPilot, 114e3, 240e3, 0.5, np.pi/2, 0.01)
+        
+        data_delayed, delay_state = signal.lfilter(rdsAPF, 1.0, audio_filt, zi = delay_state) 
+
+        mixed = 2*data_delayed*IPll[:-1]
+        baseband, baseband_state = signal.lfilter(threeKHz_coeff, 1.0, mixed, zi = baseband_state)
+
+        #####COMBINE THE FOLLOWING TWO IN THE C++#####
+        baseband = resample_poly(baseband, 247, 640)
+        amplified, amplified_state = signal.lfilter(rrc, 1.0, baseband, zi = amplified_state)
+
+        #################DO IT AGAIN FOR Q ##########################
+
+        #Qmixed = 2*data_delayed*QPll[:-1]
+        #Qclean = signal.lfilter(threeKHz_coeff, 1.0, Qmixed)
+        #Qclean = resample_poly(Qclean, 247, 640)
+        #Qclean = signal.lfilter(rrc, 1.0, Qclean)
+        #time1 = np.arange(0,150)
+        #plt.plot(time1, clean[:150])
+        #plt.plot(time1, Qclean[:150], color = "green")
+        #plt.show()
+
+
+        #plt.scatter(clean[10000:11000], Qclean[10000:11000])
+        #plt.scatter(clean[20000:21000], Qclean[20000:21000])
+
+        #plt.show()
+        offest = CDR(39, amplified)
+        print(offest)
+
+        SymbArr = amplified[offest::39] > 0 #39 is SPS
+        S += list(SymbArr>0)
+        #QSymbArr = Qclean[offest::39]
+
+#       time = np.arange(0, 50)
+#       time1 = np.arange(0,100)
+
+        manDec, manDecodeHalfSymbol, manBlockStart = ManDecode(SymbArr, block_count, manDecodeHalfSymbol, manBlockStart)
+        if block_count == 1:
+            print(manDec)
+        man += manDec
+
+
+        decodeBlk, decodeBuffer = diffDecode(manDec, decodeBuffer, block_count)
+
+        bits += decodeBlk
+        
+
+        block_count += 1
 
     ###########
     # DECODER #
     ###########
 
-    # Constants
-    syndrome = [383, 14, 303, 663, 748]
-    offset_pos = [0, 1, 2, 3, 2]
-    offset_word = [252, 408, 360, 436, 848]
 
-    # see Annex B, page 64 of the standard
-    def calc_syndrome(x, mlen):
-        reg = 0
-        plen = 10
-        for ii in range(mlen, 0, -1):
-            reg = (reg << 1) | ((x >> (ii-1)) & 0x01)
-            if (reg & (1 << plen)):
-                reg = reg ^ 0x5B9
-        for ii in range(plen, 0, -1):
-            reg = reg << 1
-            if (reg & (1 << plen)):
-                reg = reg ^ 0x5B9
-        return reg & ((1 << plen) - 1) # select the bottom plen bits of reg
+    #print(bits[:100])
+    #print(man)
+    #print(manBlockStart)
+    print(bits)
 
     # Initialize all the working vars we'll need during the loop
     synced = False
@@ -215,6 +364,15 @@ if __name__ == "__main__":
     lastseen_offset = 0
 
     # the synchronization process is described in Annex C, page 66 of the standard */
+    #print(bits)
+    '''bits = [False, True, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, True, True, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, False, False, False, True, True, True, False, False, True, False, False, False, True, False, True, False, True, False, True, False, False, True, True, False, True, False, True, True, False, False, False, False, False, False, True, False, True, False, True, False, False, False, False, True, False, False, False, False, False, False, True, True, True, True, False, True, True, True, True, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, True, False, True, False, False, True, True, False, True, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, True, False, False, False, False, True, False, False, True, False, True, True, True, False, False, True, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, True, True, False, False, True, False, False, False, True, False, True, True, True, False, 
+False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, False, True, False, False, 
+False, False, False, False, False, True, True, True, True, False, False, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, False, True, False, False, False, True, False, True, False, True, False, False, True, True, False, True, False, True, False, False, True, True, True, True, False, True, True, True, False, True, True, False, False, False, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, False, False, True, False, False, False, False, False, True, False, True, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, True, True, False, True, True, True, True, False, False, False, 
+False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, 
+False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, True, False, True, False, False, True, True, False, True, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, True, False, False, False, False, True, False, False, True, False, True, True, True, False, False, True, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, True, True, False, False, True, False, False, False, True, False, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, False, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, 
+False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, True, True, False, False, True, True, True, True, True, True, False, False, False, False, True, False, True, True, True, True, False, True, False, True, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, True, False, True, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, 
+False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True]
+    '''
     bytes_out = []
     for i in range(len(bits)):
         # in C++ reg doesn't get init so it will be random at first, for ours its 0s
@@ -248,6 +406,7 @@ if __name__ == "__main__":
 
         else: # SYNCED
             # wait until 26 bits enter the buffer */
+            #print('hihi')
             if block_bit_counter < 25:
                 block_bit_counter += 1
             else:
@@ -291,7 +450,7 @@ if __name__ == "__main__":
                         group_good_blocks_counter += 1
                         #print('group_good_blocks_counter:', group_good_blocks_counter)
                     if group_good_blocks_counter == 5:
-                        #print(bytes)
+                        print(bytes)
                         bytes_out.append(bytes) # list of len-8 lists of bytes
                 block_bit_counter = 0
                 block_number = (block_number + 1) % 4
@@ -306,64 +465,13 @@ if __name__ == "__main__":
                     blocks_counter = 0
                     wrong_blocks_counter = 0
 
+    print("hi")
+
     ###########
     # PARSER  #
     ###########
 
-    # Annex F of RBDS Standard Table F.1 (North America) and Table F.2 (Europe)
-    #              Europe                   North America
-    pty_table = [["Undefined",             "Undefined"],
-                ["News",                  "News"],
-                ["Current Affairs",       "Information"],
-                ["Information",           "Sports"],
-                ["Sport",                 "Talk"],
-                ["Education",             "Rock"],
-                ["Drama",                 "Classic Rock"],
-                ["Culture",               "Adult Hits"],
-                ["Science",               "Soft Rock"],
-                ["Varied",                "Top 40"],
-                ["Pop Music",             "Country"],
-                ["Rock Music",            "Oldies"],
-                ["Easy Listening",        "Soft"],
-                ["Light Classical",       "Nostalgia"],
-                ["Serious Classical",     "Jazz"],
-                ["Other Music",           "Classical"],
-                ["Weather",               "Rhythm & Blues"],
-                ["Finance",               "Soft Rhythm & Blues"],
-                ["Children’s Programmes", "Language"],
-                ["Social Affairs",        "Religious Music"],
-                ["Religion",              "Religious Talk"],
-                ["Phone-In",              "Personality"],
-                ["Travel",                "Public"],
-                ["Leisure",               "College"],
-                ["Jazz Music",            "Spanish Talk"],
-                ["Country Music",         "Spanish Music"],
-                ["National Music",        "Hip Hop"],
-                ["Oldies Music",          "Unassigned"],
-                ["Folk Music",            "Unassigned"],
-                ["Documentary",           "Weather"],
-                ["Alarm Test",            "Emergency Test"],
-                ["Alarm",                 "Emergency"]]
-    pty_locale = 1 # set to 0 for Europe which will use first column instead
-
-    # page 72, Annex D, table D.2 in the standard
-    coverage_area_codes = ["Local",
-                        "International",
-                        "National",
-                        "Supra-regional",
-                        "Regional 1",
-                        "Regional 2",
-                        "Regional 3",
-                        "Regional 4",
-                        "Regional 5",
-                        "Regional 6",
-                        "Regional 7",
-                        "Regional 8",
-                        "Regional 9",
-                        "Regional 10",
-                        "Regional 11",
-                        "Regional 12"]
-
+    print(bytes_out)
     radiotext_AB_flag = 0
     radiotext = [' ']*65
     first_time = True
@@ -415,10 +523,10 @@ if __name__ == "__main__":
             #print("unsupported group_type:", group_type)
 
     #fmPlotPSD(ax1, clean, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
-    plotTime(SymbArr[10:60], time)
-    plt.show()
-    plt.scatter(SymbArr, QSymbArr, s=10)
-    plt.show()
+    #plotTime(SymbArr[10:60], time)
+    #plt.show()
+    #plt.scatter(SymbArr, QSymbArr, s=10)
+    #plt.show()
 
     #plotTime(Qclean[1000:6000], time)
 
@@ -427,7 +535,7 @@ if __name__ == "__main__":
 
 
     # save PSD plots
-    fig.savefig("../data/fmMonoBasic.png")
+    #fig.savefig("../data/fmMonoBasic.png")
     plt.show()
 
     #linSquare = np.square(audio_filt)
