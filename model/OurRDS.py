@@ -35,13 +35,6 @@ def CDR(SPS, signal):
     
     return maxi
 
-def ManUtd(samples): #finds symbols that are invalid HH, LL, returns if more are correct or wront
-    score : int = 0
-    
-    for i in range(0, len(samples)-1, 2):
-        score += int(samples[i]*samples[i+1] > 0)
-
-    return score > 0
 
 def ManDecode(samples, block_count : int,  halfSymbol : int, start : int = 0):
     bits = [] #will  have length half of samples
@@ -232,11 +225,30 @@ if __name__ == "__main__":
     man = [] # for testing only
     S = []
 
+    rdsBitCtr = 0
+
     decodeBuffer = 0 #buffer between decode blocks
 
+    ###FOR DECODER
+        # Initialize all the working vars we'll need during the loop
+    synced = False
+    presync = False
 
-    in_fname = "./data/samples3.raw"
-    raw_data = np.fromfile(in_fname, dtype='uint8')[:5000000]
+    wrong_blocks_counter = 0
+    blocks_counter = 0
+    group_good_blocks_counter = 0
+
+    reg = np.uint32(0) # was unsigned long in C++ (64 bits) but numpy doesn't support bitwise ops of uint64, I don't think it gets that high anyway
+    lastseen_offset_counter = 0
+    lastseen_offset = 0
+
+    bytes_out = []
+
+    test_arr = []
+
+
+    in_fname = "./data/samples5.raw"
+    raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
     iq_data = (np.float32(raw_data) - 128.0)/128.0
@@ -348,130 +360,112 @@ if __name__ == "__main__":
 
     #print(bits[:100])
     #print(man)
-    #print(manBlockStart)
-    print(bits)
 
-    # Initialize all the working vars we'll need during the loop
-    synced = False
-    presync = False
-
-    wrong_blocks_counter = 0
-    blocks_counter = 0
-    group_good_blocks_counter = 0
-
-    reg = np.uint32(0) # was unsigned long in C++ (64 bits) but numpy doesn't support bitwise ops of uint64, I don't think it gets that high anyway
-    lastseen_offset_counter = 0
-    lastseen_offset = 0
-
-    # the synchronization process is described in Annex C, page 66 of the standard */
-    #print(bits)
-    '''bits = [False, True, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, True, True, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, False, False, False, True, True, True, False, False, True, False, False, False, True, False, True, False, True, False, True, False, False, True, True, False, True, False, True, True, False, False, False, False, False, False, True, False, True, False, True, False, False, False, False, True, False, False, False, False, False, False, True, True, True, True, False, True, True, True, True, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, True, False, True, False, False, True, True, False, True, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, True, False, False, False, False, True, False, False, True, False, True, True, True, False, False, True, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, True, True, False, False, True, False, False, False, True, False, True, True, True, False, 
-False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, False, True, False, False, 
-False, False, False, False, False, True, True, True, True, False, False, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, False, True, False, False, False, True, False, True, False, True, False, False, True, True, False, True, False, True, False, False, True, True, True, True, False, True, True, True, False, True, True, False, False, False, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, False, False, True, False, False, False, False, False, True, False, True, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True, True, False, False, False, False, True, True, False, True, True, True, True, False, False, False, 
-False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, 
-False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, True, False, True, False, False, True, True, False, True, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, True, False, False, False, False, True, False, False, True, False, True, True, True, False, False, True, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, True, True, False, False, True, False, False, False, True, False, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, True, False, False, False, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, False, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, 
-False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, True, True, False, False, True, True, True, True, True, True, False, False, False, False, True, False, True, True, True, True, False, True, False, True, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, True, False, True, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, True, False, False, True, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, True, True, False, False, True, True, False, True, False, True, True, True, True, False, True, False, False, True, False, False, True, False, False, False, False, False, False, False, True, False, False, False, False, False, False, 
-False, True, True, False, True, True, True, False, False, True, False, True, True, False, False, True, False, False, False, False, False, False, False, True, True, True, True, False, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True, True]
-    '''
-    bytes_out = []
-    for i in range(len(bits)):
-        # in C++ reg doesn't get init so it will be random at first, for ours its 0s
-        # It was also an unsigned long but never seemed to get anywhere near the max value
-        # bits are either 0 or 1
-        reg = np.bitwise_or(np.left_shift(reg, 1), bits[i]) # reg contains the last 26 rds bits. these are both bitwise ops
-        if not synced:
-            reg_syndrome = calc_syndrome(reg, 26)
-            for j in range(5):
-                if reg_syndrome == syndrome[j]:
-                    if not presync:
-                        lastseen_offset = j
-                        lastseen_offset_counter = i
-                        presync = True
-                    else:
-                        if offset_pos[lastseen_offset] >= offset_pos[j]:
-                            block_distance = offset_pos[j] + 4 - offset_pos[lastseen_offset]
+        for i in range(len(decodeBlk)):
+            # in C++ reg doesn't get init so it will be random at first, for ours its 0s
+            # It was also an unsigned long but never seemed to get anywhere near the max value
+            # bits are either 0 or 1
+            reg = np.bitwise_or(np.left_shift(reg, 1), decodeBlk[i]) # reg contains the last 26 rds bits. these are both bitwise ops
+            if not synced:
+                reg_syndrome = calc_syndrome(reg, 26)
+                #print(decodeBlk[i], end = " ")
+                #test_arr.append(reg_syndrome)
+                #print(reg_syndrome, end=" ")
+                for j in range(5):
+                    #test_arr.append(block_distance)
+                    if reg_syndrome == syndrome[j]:
+                        if not presync:
+                            lastseen_offset = j
+                            lastseen_offset_counter = rdsBitCtr
+                            presync = True
                         else:
-                            block_distance = offset_pos[j] - offset_pos[lastseen_offset]
-                        if (block_distance*26) != (i - lastseen_offset_counter):
-                            presync = False
-                        else:
-                            print('Sync State Detected')
-                            wrong_blocks_counter = 0
-                            blocks_counter = 0
-                            block_bit_counter = 0
-                            block_number = (j + 1) % 4
-                            group_assembly_started = False
-                            synced = True
-                break # syndrome found, no more cycles
+                            
+                            if offset_pos[lastseen_offset] >= offset_pos[j]:
+                                block_distance = offset_pos[j] + 4 - offset_pos[lastseen_offset]
+                            else:
+                                block_distance = offset_pos[j] - offset_pos[lastseen_offset]
+                            if (block_distance*26) != (rdsBitCtr - lastseen_offset_counter):
+                                presync = False
+                            else:
+                                print('Sync State Detected')
+                                wrong_blocks_counter = 0
+                                blocks_counter = 0
+                                block_bit_counter = 0
+                                block_number = (j + 1) % 4
+                                group_assembly_started = False
+                                synced = True
+                        break # syndrome found, no more cycles
 
-        else: # SYNCED
-            # wait until 26 bits enter the buffer */
-            #print('hihi')
-            if block_bit_counter < 25:
-                block_bit_counter += 1
-            else:
-                good_block = False
-                dataword = (reg >> 10) & 0xffff
-                block_calculated_crc = calc_syndrome(dataword, 16)
-                checkword = reg & 0x3ff
-                if block_number == 2: # manage special case of C or C' offset word
-                    block_received_crc = checkword ^ offset_word[block_number]
-                    if (block_received_crc == block_calculated_crc):
-                        good_block = True
-                    else:
-                        block_received_crc = checkword ^ offset_word[4]
+            else: # SYNCED
+                # wait until 26 bits enter the buffer */
+                #print('hihi')
+                if block_bit_counter < 25:
+                    block_bit_counter += 1
+                else:
+                    good_block = False
+                    dataword = (reg >> 10) & 0xffff
+                    block_calculated_crc = calc_syndrome(dataword, 16)
+                    checkword = reg & 0x3ff
+                    if block_number == 2: # manage special case of C or C' offset word
+                        block_received_crc = checkword ^ offset_word[block_number]
                         if (block_received_crc == block_calculated_crc):
+                            good_block = True
+                        else:
+                            block_received_crc = checkword ^ offset_word[4]
+                            if (block_received_crc == block_calculated_crc):
+                                good_block = True
+                            else:
+                                wrong_blocks_counter += 1
+                                good_block = False
+                    else:
+                        block_received_crc = checkword ^ offset_word[block_number] # bitwise xor
+                        if block_received_crc == block_calculated_crc:
                             good_block = True
                         else:
                             wrong_blocks_counter += 1
                             good_block = False
-                else:
-                    block_received_crc = checkword ^ offset_word[block_number] # bitwise xor
-                    if block_received_crc == block_calculated_crc:
-                        good_block = True
-                    else:
-                        wrong_blocks_counter += 1
-                        good_block = False
 
-                # Done checking CRC
-                if block_number == 0 and good_block:
-                    group_assembly_started = True
-                    group_good_blocks_counter = 1
-                    bytes = bytearray(8) # 8 bytes filled with 0s
-                if group_assembly_started:
-                    if not good_block:
-                        group_assembly_started = False
-                    else:
-                        # raw data bytes, as received from RDS. 8 info bytes, followed by 4 RDS offset chars: ABCD/ABcD/EEEE (in US) which we leave out here
-                        # RDS information words
-                        # block_number is either 0,1,2,3 so this is how we fill out the 8 bytes
-                        bytes[block_number*2] = (dataword >> 8) & 255
-                        bytes[block_number*2+1] = dataword & 255
-                        group_good_blocks_counter += 1
-                        #print('group_good_blocks_counter:', group_good_blocks_counter)
-                    if group_good_blocks_counter == 5:
-                        print(bytes)
-                        bytes_out.append(bytes) # list of len-8 lists of bytes
-                block_bit_counter = 0
-                block_number = (block_number + 1) % 4
-                blocks_counter += 1
-                if blocks_counter == 50:
-                    if wrong_blocks_counter > 35: # This many wrong blocks must mean we lost sync
-                        print("Lost Sync (Got ", wrong_blocks_counter, " bad blocks on ", blocks_counter, " total)")
-                        synced = False
-                        presync = False
-                    else:
-                        print("Still Sync-ed (Got ", wrong_blocks_counter, " bad blocks on ", blocks_counter, " total)")
-                    blocks_counter = 0
-                    wrong_blocks_counter = 0
+                    # Done checking CRC
+                    if block_number == 0 and good_block:
+                        group_assembly_started = True
+                        group_good_blocks_counter = 1
+                        bytes = bytearray(8) # 8 bytes filled with 0s
+                    if group_assembly_started:
+                        if not good_block:
+                            group_assembly_started = False
+                        else:
+                            # raw data bytes, as received from RDS. 8 info bytes, followed by 4 RDS offset chars: ABCD/ABcD/EEEE (in US) which we leave out here
+                            # RDS information words
+                            # block_number is either 0,1,2,3 so this is how we fill out the 8 bytes
+                            bytes[block_number*2] = (dataword >> 8) & 255
+                            bytes[block_number*2+1] = dataword & 255
+                            group_good_blocks_counter += 1
+                            #print('group_good_blocks_counter:', group_good_blocks_counter)
+                        if group_good_blocks_counter == 5:
+                            print(bytes)
+                            bytes_out.append(bytes) # list of len-8 lists of bytes
+                    block_bit_counter = 0
+                    block_number = (block_number + 1) % 4
+                    blocks_counter += 1
+                    if blocks_counter == 50:
+                        if wrong_blocks_counter > 35: # This many wrong blocks must mean we lost sync
+                            print("Lost Sync (Got ", wrong_blocks_counter, " bad blocks on ", blocks_counter, " total)")
+                            synced = False
+                            presync = False
+                        else:
+                            print("Still Sync-ed (Got ", wrong_blocks_counter, " bad blocks on ", blocks_counter, " total)")
+                        blocks_counter = 0
+                        wrong_blocks_counter = 0
 
-    print("hi")
+            rdsBitCtr += 1 #sub for i
+    print(test_arr)
 
     ###########
     # PARSER  #
     ###########
 
     print(bytes_out)
+    bytes_out = bytes_out[:]
     radiotext_AB_flag = 0
     radiotext = [' ']*65
     first_time = True
@@ -499,7 +493,7 @@ False, True, True, False, True, True, True, False, False, True, False, True, Tru
 
         if first_time:
             print("PTY:", pty)
-            print("program:", pi_program_reference_number)
+            print("program:", hex(program_identification) )
             print("coverage_area:", coverage_area)
             first_time = False
 
