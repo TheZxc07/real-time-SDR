@@ -24,7 +24,7 @@ def resample():
 def CDR(SPS, signal):
     maxi, maxv, sum = 0,0, 0 #max index, max value
     for i in range(SPS):
-        for x in range(10): #10 is arbitrary
+        for x in range(int(len(signal)/SPS)): #10 is arbitrary
             sum += abs(signal[x*SPS + i])
         
         if sum > maxv:
