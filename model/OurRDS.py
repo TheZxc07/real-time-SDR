@@ -125,6 +125,41 @@ def calc_syndrome(x, mlen):
             reg = reg ^ 0x5B9
     return reg & ((1 << plen) - 1) # select the bottom plen bits of reg
 
+def stringify(inp: np.uint64)-> str: #pure helper for visualiztion
+    s = ""
+    for n in range(8) : #8 bytes
+        s = chr((inp >> np.uint64(n*8)) & np.uint64(0xFF)) + s
+
+    return s
+
+
+
+def parse(bytes : np.uint64, first_time : bool, PS_chars : np.uint64, output : np.uint64):
+    group_type = (bytes >> np.uint64(44)) & np.uint64(0xf) #44 = 32 for the first two groups, plus 12 to get group type 
+    AB = (bytes >> np.uint64(43)) &np.uint64( 0x1 ) #1 means B block, 0 means A block
+    placement = (bytes >> np.uint64(32)) & np.uint64(0x03) #isolate two lsb of second group
+    PI = (bytes >> np.uint64(48)) & np.uint64(0xFFFF)
+    PTY = (bytes >> np.uint64(37)) & np.uint64(0x1f)
+    PTY_decode = pty_table[PTY][1]
+
+    if first_time:
+        print(f"PI: {hex(PI)}")
+        print(f"PTY: {PTY_decode}")
+        first_time = False
+
+    
+    if group_type == 0:#we don't care about A/B, because the last little grop is the same
+        #print(chars)
+        PS_chars = np.left_shift(PS_chars, np.uint64(16)) | (bytes & np.uint64(0xFFFF))
+        #chars[2*placement+1] = chr(bytes[7])
+        #chars[2*placement] = chr(bytes[6])
+
+        if placement == 3 and PS_chars != output:#if at the end of four of these, we have a new word
+            output = PS_chars #set the state
+            print(f'PS: {stringify(output)}')
+
+    return PS_chars, output, first_time
+
 # Annex F of RBDS Standard Table F.1 (North America) and Table F.2 (Europe)
 #              Europe                   North America
 pty_table = [["Undefined",             "Undefined"],
@@ -244,10 +279,14 @@ if __name__ == "__main__":
 
     bytes_out = []
 
+    chars = np.uint64(0)
+    output = np.uint64(0)
+    first_time = True
+
     test_arr = []
 
 
-    in_fname = "./data/samples5.raw"
+    in_fname = "./data/samples8.raw"
     raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
@@ -265,7 +304,7 @@ if __name__ == "__main__":
         #fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, gridspec_kw={'height_ratios': subfig_height})
         #fig.subplots_adjust(hspace = .6)
 
-        print('Processing block ' + str(block_count))
+        #print('Processing block ' + str(block_count))
 
         # filter to extract the FM channel (I samples are even, Q samples are odd)
         i_filt, state_i_lpf_100k = signal.lfilter(rf_coeff, 1.0, \
@@ -331,7 +370,7 @@ if __name__ == "__main__":
 
         #plt.show()
         offest = CDR(39, amplified)
-        print(offest)
+        #print(offest)
 
         SymbArr = amplified[offest::39] > 0 #39 is SPS
         S += list(SymbArr>0)
@@ -430,6 +469,8 @@ if __name__ == "__main__":
                         group_assembly_started = True
                         group_good_blocks_counter = 1
                         bytes = bytearray(8) # 8 bytes filled with 0s
+                        register = np.uint64(0)
+
                     if group_assembly_started:
                         if not good_block:
                             group_assembly_started = False
@@ -439,16 +480,21 @@ if __name__ == "__main__":
                             # block_number is either 0,1,2,3 so this is how we fill out the 8 bytes
                             bytes[block_number*2] = (dataword >> 8) & 255
                             bytes[block_number*2+1] = dataword & 255
+                            register &= ~(np.uint64(0xFFFF) << np.uint64(48-block_number*16))
+                            register |= np.uint64(dataword) << np.uint64(48 - block_number*16)
                             group_good_blocks_counter += 1
                             #print('group_good_blocks_counter:', group_good_blocks_counter)
                         if group_good_blocks_counter == 5:
-                            print(bytes)
+                            #print(bytes)
                             bytes_out.append(bytes) # list of len-8 lists of bytes
+                            chars, output, first_time = parse(register, first_time, chars, output)
+
+
                     block_bit_counter = 0
                     block_number = (block_number + 1) % 4
                     blocks_counter += 1
                     if blocks_counter == 50:
-                        if wrong_blocks_counter > 35: # This many wrong blocks must mean we lost sync
+                        if wrong_blocks_counter > 10: # This many wrong blocks must mean we lost sync
                             print("Lost Sync (Got ", wrong_blocks_counter, " bad blocks on ", blocks_counter, " total)")
                             synced = False
                             presync = False
@@ -458,17 +504,17 @@ if __name__ == "__main__":
                         wrong_blocks_counter = 0
 
             rdsBitCtr += 1 #sub for i
-    print(test_arr)
+    #print(test_arr)
 
     ###########
     # PARSER  #
     ###########
-
+    '''
     print(bytes_out)
     bytes_out = bytes_out[:]
-    radiotext_AB_flag = 0
-    radiotext = [' ']*65
     first_time = True
+    chars = [" "]*8
+    output = "        "
     for bytes in bytes_out:
         group_0 = bytes[1] | (bytes[0] << 8)
         group_1 = bytes[3] | (bytes[2] << 8)
@@ -477,6 +523,7 @@ if __name__ == "__main__":
 
         group_type = (group_1 >> 12) & 0xf # here is what each one means, e.g. RT is radiotext which is the only one we decode here: ["BASIC", "PIN/SL", "RT", "AID", "CT", "TDC", "IH", "RP", "TMC", "EWS", "___", "___", "___", "___", "EON", "___"]
         AB = (group_1 >> 11 ) & 0x1 # b if 1, a if 0
+        placement = (group_1) &0x03
 
         #print("group_type:", group_type) # this is essentially message type, i only see type 0 and 2 in my recording
         #print("AB:", AB)
@@ -493,10 +540,24 @@ if __name__ == "__main__":
 
         if first_time:
             print("PTY:", pty)
-            print("program:", hex(program_identification) )
+            print("program:", hex(program_identification))
             print("coverage_area:", coverage_area)
             first_time = False
 
+
+        
+        if group_type == 0:
+            #print(chars)
+            chars[2*placement+1] = chr(bytes[7])
+            chars[2*placement] = chr(bytes[6])
+
+            if placement == 3 and "".join(chars) != output:
+                output = "".join(chars)
+                print(f'PS: {output}')
+            #print(f'PS: {x}, {placement}')
+'''
+            
+'''
         if group_type == 2:
             # when the A/B flag is toggled, flush your current radiotext
             if radiotext_AB_flag != ((group_1 >> 4) & 0x01):
@@ -514,7 +575,7 @@ if __name__ == "__main__":
             print(''.join(radiotext))
         else:
             pass
-            #print("unsupported group_type:", group_type)
+            #print("unsupported group_type:", group_type)'''
 
     #fmPlotPSD(ax1, clean, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
     #plotTime(SymbArr[10:60], time)
@@ -530,7 +591,7 @@ if __name__ == "__main__":
 
     # save PSD plots
     #fig.savefig("../data/fmMonoBasic.png")
-    plt.show()
+    #plt.show()
 
     #linSquare = np.square(audio_filt)
 
