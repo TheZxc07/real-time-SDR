@@ -5,7 +5,7 @@ int cdr(int sps, const std::vector<float> &signal){
     int maxi = 0, maxv = 0, sum = 0;
 
     for (int i = 0; i < sps; i++){
-        for (int k = 500; k < 1000; k++){
+        for (int k = 0; k < signal.size()/sps; k++){
             sum += abs(signal[k*sps + i]);
         }
 
@@ -31,23 +31,54 @@ int manchester_united(const std::vector<float> &samples){
 
 }
 
-void manchester_decode(std::vector<int> &bits, const std::vector<float> &samples){
-    bits.clear(); bits.resize(samples.size()/2, 0.0);
+void manchester_decode(std::vector<int> &bits, const std::vector<int> &symbols, int &block_count, int &half_symbol, int &start){
+    bits.clear(); bits.resize(symbols.size()/2, 0.0);
+    int score;
 
-    for (int i = 0; i < samples.size(); i++){
+    if (start){
+        bits[0] = half_symbol;
+    }
 
+    if (block_count == 0){
+        score = 0;
+        for (int i = 0; i < symbols.size()-1; i+=2){
+            score+=symbols[i]^symbols[i+1];
+        }
+        for (int j = 1; j < symbols.size()-1; j+=2){
+            score-=symbols[j]^symbols[j+1];
+        }
+        start = score < 0;
+    }
+
+    for (int i = start; i < symbols.size(); i+=2){
+        bits[i] = symbols[i];
+    }
+
+    if ((symbols.size()-start) & 0x01 == 1){
+        half_symbol = symbols[symbols.size()-1];
+        start = 1;
+    } else{
+        start = 0;
     }
 
 }
 
-void differential_decode(std::vector<int> &decoded_bits, const std::vector<int> &bits){
+void differential_decode(std::vector<int> &decoded_bits, const std::vector<int> &bits, int &last_bit, int &block_num){
     decoded_bits.clear(); decoded_bits.resize(bits.size(), 0.0);
 
     decoded_bits[0] = bits[0];
 
+    if (block_num == 0){
+        decoded_bits[0] = bits[0];
+    } else {
+        decoded_bits[0] = bits[0]^last_bit;
+    }
+
     for (int i = 1; i < bits.size(); i++){
         decoded_bits[i] = bits[i]^bits[i-1];
     }
+
+    last_bit = bits[bits.size()-1];
 }
 
 int calc_syndrome(int x, int mlen){
@@ -76,7 +107,7 @@ void decode(){
     int offset_pos[] = { 0, 1, 2, 3, 2 };
     int offset_word[] = { 252, 408, 360, 436, 848 };
 
-    
+
 
 
 }

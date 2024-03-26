@@ -2,6 +2,7 @@
 #include "args.h"
 #include "filter.h"
 #include "pll.h"
+#include "rds_utilities.h"
 
 void rds(args* p){
 
@@ -20,6 +21,9 @@ void rds(args* p){
     int sps = p->symbol_Fs;
     
     int block_count = 0;
+    int half_symbol = 0;
+    int start = 0;
+    int last_bit = 0;
 
     std::vector<float> rds_band;
     std::vector<float> rds_band_squared; rds_band_squared.resize(block_size, 0.0);
@@ -34,6 +38,9 @@ void rds(args* p){
     std::vector<float> rds_filt_state; rds_filt_state.clear(); rds_filt_state.resize(rf_taps-1,0.0);
     std::vector<float> rds_clean;
     std::vector<float> rds_clean_state; rds_clean_state.clear(); rds_clean_state.resize(rf_taps-1, 0.0);
+    std::vector<int> symbols; symbols.clear(); symbols.resize(2836/39, 0.0);
+    std::vector<int> bits;
+    std::vector<int> decoded_bits;
 
     pllblock_args block_args;
 	block_args.feedbackI = 1.0;
@@ -50,6 +57,8 @@ void rds(args* p){
     impulseResponseBPF(if_Fs, fb_rds_squared, rf_taps, pilot_h);
     impulseResponseAPF(1, rf_taps, rds_delay_h);
     impulseResponseRRC(2375*sps, rf_taps, rrc_h);
+
+    int sample_offset = 0;
 
     while(true){
         p->queue.wait_and_pop(fm_demod);
@@ -77,14 +86,27 @@ void rds(args* p){
         for (int i = 0; i < block_size; i++){
             rds_dc[i] = 2.0*rds_band_delay[i]*IPLL[i];
         }
-        
 
         // Extract RDS band through LPF
         convolveFIR(rds_filt, rds_dc, rds_baseband_h, rds_filt_state, 247, 640);
 	
         // Pass RDS band through RRC filter to reduce ISI
         convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
-		
+
+        // Perform clock and data recovery to produce sample offset
+        sample_offset = cdr(sps, rds_clean);
+
+        // Take every sps-th element starting at offset from the clean RDS signal to recover symbols
+        for (int i = 0; i < symbols.size(); i++){
+            symbols[i] = rds_clean[sample_offset + i*sps] > 0;
+        }
+
+        // Perform Manchester decoding to extract bits from symbols
+        manchester_decode(bits, symbols, block_count, half_symbol, start);
+
+        // Perform differential decoding to recover bitstream
+        differential_decode(decoded_bits, bits, last_bit, block_count);
+
 		block_count++;
     }
 
