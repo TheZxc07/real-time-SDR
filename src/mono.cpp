@@ -3,12 +3,9 @@
 #include "filter.h"
 #include "args.h"
 #include "threadsafequeue.h"
-<<<<<<< Updated upstream
 #include "demod.h"
-
-=======
 #include <chrono>
->>>>>>> Stashed changes
+
 void mono_mode0(args* p){
 	
 	std::vector<float> audio_h;
@@ -54,16 +51,9 @@ void mono_mode0(args* p){
 	uint8_t byte;
 
 	while(true){
-<<<<<<< Updated upstream
 		
 		/*
 		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
-=======
-	
-		std::cerr << "Processing block: " << block_count << "\n";
-		auto start = std::chrono::high_resolution_clock::now(); // Start time
-		p->queue.wait_and_pop(fm_demod);
->>>>>>> Stashed changes
 
 		while(sample_num < 2*block_size){
 			iq_sample = ((float)IQ_buf[sample_num]-128.0)/128.0;
@@ -73,7 +63,6 @@ void mono_mode0(args* p){
 		}
 		sample_num = 0;
 		
-<<<<<<< Updated upstream
 		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
 	
 		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
@@ -81,18 +70,11 @@ void mono_mode0(args* p){
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, fm_demod);
 		*/
 		while(!(p->queue.empty())){
+			auto start = std::chrono::steady_clock::now(); // Start measuring time
 			std::cerr << "Processing block: " << block_count << "\n";
 			p->queue.wait_and_pop(fm_demod);
 	
 			convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_decim);
-=======
-		delete fm_demod;
-		 auto end = std::chrono::high_resolution_clock::now(); // End time
-
-    	std::chrono::duration<double> elapsed_seconds = end - start; // Time taken
-    	std::cerr << "Time taken for processing block " << block_count << ": " << elapsed_seconds.count() << " seconds\n";
-		block_count++;
->>>>>>> Stashed changes
 			
 			for (int i = 0; i < audio.size(); i++){
 				audio[i] = (short int)(16384*audio_filt[i]);
@@ -103,6 +85,10 @@ void mono_mode0(args* p){
 			
 			
 			delete fm_demod;
+			auto end = std::chrono::steady_clock::now(); // End measuring time
+
+        	std::chrono::duration<double> elapsed_seconds = end - start; // Calculate elapsed time
+        	std::cerr << "Time taken for one block: " << elapsed_seconds.count() << " seconds\n";
 			block_count++;
 			
 		}
@@ -166,6 +152,7 @@ void mono_mode1(){
 
 	while(true){
 		
+		auto start = std::chrono::steady_clock::now(); // Start measuring time
 		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
 
 		while(sample_num < 2*block_size){
@@ -197,6 +184,11 @@ void mono_mode1(){
 			audio[i/audio_decim] = (short int)(16384*audio_filt[i]);
 			//std::cerr << audio[i/audio_decim] << std::endl;
 		}
+
+		auto end = std::chrono::steady_clock::now(); // End measuring time
+
+        std::chrono::duration<double> elapsed_seconds = end - start; // Calculate elapsed time
+        std::cerr << "Time taken for one block: " << elapsed_seconds.count() << " seconds\n";
 	
 		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
 		
@@ -262,6 +254,8 @@ void mono_mode2(){
 	uint8_t byte;
 	
 	while(true){
+
+		auto start = std::chrono::steady_clock::now(); // Start measuring time
 		
 		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
 		
@@ -290,7 +284,10 @@ void mono_mode2(){
 			audio[i] = (short int)(16384*audio_filt[i]);
 			//std::cerr << audio[i/audio_decim] << std::endl;
 		}
-	
+		auto end = std::chrono::steady_clock::now(); // End measuring time
+
+        std::chrono::duration<double> elapsed_seconds = end - start; // Calculate elapsed time
+        std::cerr << "Time taken for one block: " << elapsed_seconds.count() << " seconds\n";
 		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
 
 	}
@@ -347,7 +344,8 @@ void mono_mode3(){
 	uint8_t byte;
 	
 	while(true){
-		
+
+		auto start = std::chrono::steady_clock::now(); // Start measuring time
 		std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
 		
 		while(sample_num < 2*block_size){
@@ -375,6 +373,11 @@ void mono_mode3(){
 			audio[i] = (short int)(16384*audio_filt[i]);
 			//std::cerr << audio[i/audio_decim] << std::endl;
 		}
+		auto end = std::chrono::steady_clock::now(); // End measuring time
+
+        std::chrono::duration<double> elapsed_seconds = end - start; // Calculate elapsed time
+        std::cerr << "Time taken for one block: " << elapsed_seconds.count() << " seconds\n";
+    }
 	
 		fwrite(&audio[0], sizeof(short int), audio.size(), stdout); 
 

@@ -3,6 +3,7 @@
 #include "args.h"
 #include "threadsafequeue.h"
 #include "pll.h"
+#include <chrono>
 
 void stereo_mode0(args* p){
 	
@@ -63,6 +64,9 @@ void stereo_mode0(args* p){
 	
 	while(true){
 		while(!(p->queue.empty())){
+
+			auto start = std::chrono::steady_clock::now(); // Start measuring time
+
 			std::cerr << "Processing block: " << block_count << "\n";
 			p->queue.wait_and_pop(fm_demod);
 			convolveFIR(extracted_pilot, *fm_demod, pilot_h, extracted_pilot_state, 1); 
@@ -95,6 +99,10 @@ void stereo_mode0(args* p){
 	
 			delete fm_demod;
 			block_count++;
+			auto end = std::chrono::steady_clock::now(); // End measuring time
+
+        	std::chrono::duration<double> elapsed_seconds = end - start; // Calculate elapsed time
+        	std::cerr << "Time taken for one block: " << elapsed_seconds.count() << " seconds\n";
 		}
 		
 	}
