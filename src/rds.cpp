@@ -18,6 +18,8 @@ void rds(args* p){
     unsigned short int rf_taps = p->rf_taps;
     int block_size = (1470 * audio_decim)/audio_upsample;
     int sps = p->symbol_Fs;
+    
+    int block_count = 0;
 
     std::vector<float> rds_band;
     std::vector<float> rds_band_squared; rds_band_squared.resize(block_size, 0.0);
@@ -43,7 +45,7 @@ void rds(args* p){
     float fb_rds[] = { 54e3, 60e3 };
     float fb_rds_squared[] = { 113.5e3, 114.5e3 };
 
-    impulseResponseLPF(if_Fs, 3e3, rf_taps, rds_baseband_h);
+    impulseResponseLPF(if_Fs*247, 3e3, rf_taps*247, rds_baseband_h, 247);
     impulseResponseBPF(if_Fs, fb_rds, rf_taps, rds_h);
     impulseResponseBPF(if_Fs, fb_rds_squared, rf_taps, pilot_h);
     impulseResponseAPF(1, rf_taps, rds_delay_h);
@@ -51,36 +53,39 @@ void rds(args* p){
 
     while(true){
         p->queue.wait_and_pop(fm_demod);
-
+        
         // RDS band extraction through BPF
         convolveFIR(rds_band, *fm_demod, rds_h, rds_band_state, 1);
 
         p->queue.prepare();
-
+        
         // Squaring Non-Linearity to generate pilot at 114 KHz
         for (int i = 0; i < block_size; i++){
             rds_band_squared[i] = rds_band[i]*rds_band[i];
         }
-
+      
         // 114 KHz pilot extraction through BPF
         convolveFIR(gen_pilot, rds_band_squared, pilot_h, gen_pilot_state, 1);
         
         // Generate a 57 KHz tone from 114 KHz pilot
-        fmpll(gen_pilot, 114e3, if_Fs, IPLL, block_args, 0.5);
+        fmpll(gen_pilot, 114e3, if_Fs, IPLL, block_args, 0.5, 0, 0.001);
 
-        // Delay the RDS band to align with the carrier
+        // Delay the RDS band to phase align with the carrier
         convolveFIR(rds_band_delay, rds_band, rds_delay_h, rds_band_delay_state, 1);
 
         // Mixing to downconvert RDS band to baseband
         for (int i = 0; i < block_size; i++){
             rds_dc[i] = 2.0*rds_band_delay[i]*IPLL[i];
         }
+        
 
         // Extract RDS band through LPF
         convolveFIR(rds_filt, rds_dc, rds_baseband_h, rds_filt_state, 247, 640);
-
+	
         // Pass RDS band through RRC filter to reduce ISI
         convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
+		
+		block_count++;
     }
 
 }
