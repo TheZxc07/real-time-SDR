@@ -95,14 +95,17 @@ audio_decim = 5
 # in-lab (il_vs_th = 0) vs takehome (il_vs_th = 1)
 il_vs_th = 0
 
-audio_coeff = signal.firwin(rf_taps, [54e3/(5*audio_Fs/2), 60e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
+audio_coeff = signal.firwin(rf_taps, [54e3/(5*audio_Fs/2), 60e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False)
+rds_coeff = impulseResponseBPF(audio_Fs*5, [54e3, 60e3], 101) #given audio_fs is 48, should be 240
 threeKHz_coeff = signal.firwin(rf_taps, 3e3/(5*audio_Fs/2), window=("hann")) #given audio_fs is 48, should be 240
+#baseband_coeff = impulseResponseLPF(3e3, audio_Fs*5, 101)
+baseband_coeff = impulseResponseLPFupsampled(3e3, audio_Fs*5*247, 101*247, 247)
 rrc = impulseResponseRootRaisedCosine(92625, 101)
 
 # coefficients for the front-end low-pass filter
 rf_coeff = signal.firwin(rf_taps, rf_Fc/(rf_Fs/2), window=('hann'))
 pll_clean_coeff = signal.firwin(rf_taps, [113.5e3/(5*audio_Fs/2), 114.5e3/(5*audio_Fs/2)], window=("hann"), pass_zero=False) #given audio_fs is 48, should be 240
-
+pll_coeff = impulseResponseBPF(5*audio_Fs, [113.5e3, 114.5e3], 101)
 
 rdsAPF = APF(rf_taps, 50)
 
@@ -247,7 +250,7 @@ if __name__ == "__main__":
     test_arr = []
 
 
-    in_fname = "../data/samples4.raw"
+    in_fname = "../data/samples3.raw"
     raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
@@ -255,6 +258,8 @@ if __name__ == "__main__":
     print("Reformatted raw RF data to 32-bit float format (" + str(iq_data.size * iq_data.itemsize) + " bytes)")
     bits = []
     print(len(iq_data))
+    prev_i = 0
+    prev_q = 0
 
     while (block_count+1)*block_size < len(iq_data):
 
@@ -282,18 +287,21 @@ if __name__ == "__main__":
         # downsample the FM channel
         i_ds = i_filt[::rf_decim]
         q_ds = q_filt[::rf_decim]
+        
 
 
-        fm_demod, state_phase= fmDemodArctan(i_ds, q_ds, state_phase)
+        fm_demod, prev_i, prev_q = fmDemod(i_ds, q_ds, prev_i, prev_q)
 
-        audio_filt, audio_state = signal.lfilter(audio_coeff, 1.0, fm_demod, zi=audio_state)
-
+        audio_filt, audio_state = convfilter(rds_coeff, fm_demod, audio_state)#signal.lfilter(rds_coeff, 1.0, fm_demod, zi=audio_state)
+        #print(audio_filt)
         #####START OF RDS#######
 
         linSquare = np.square(audio_filt)
 
+        #print(linSquare)
 
-        genPilot, pilot_state = signal.lfilter(pll_clean_coeff, 1.0, linSquare, zi=pilot_state)
+
+        genPilot, pilot_state = convfilter(pll_coeff, linSquare, pilot_state)#signal.lfilter(pll_clean_coeff, 1.0, linSquare, zi=pilot_state)
         # PSD after extracting mono audio
 
 
@@ -308,10 +316,15 @@ if __name__ == "__main__":
         data_delayed, delay_state = signal.lfilter(rdsAPF, 1.0, audio_filt, zi = delay_state) 
 
         mixed = 2*data_delayed*IPll[:-1]
-        baseband, baseband_state = signal.lfilter(threeKHz_coeff, 1.0, mixed, zi = baseband_state)
+        #baseband, baseband_state = signal.lfilter(baseband_coeff, 1.0, mixed, zi = baseband_state)
 
         #####COMBINE THE FOLLOWING TWO IN THE C++#####
-        baseband = resample_poly(baseband, 247, 640)
+        #baseband = resample_poly(baseband, 247, 640)
+
+        baseband, baseband_state = convfilter_resample(baseband_coeff, mixed, baseband_state, 640, 247, 247)
+
+
+
         amplified, amplified_state = signal.lfilter(rrc, 1.0, baseband, zi = amplified_state)
         print(amplified)
         #exit(1)

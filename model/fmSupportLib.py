@@ -32,6 +32,87 @@ import matplotlib.pyplot as plt
 # IQ samples; then unwrap the phase and take its derivative to demodulate
 #
 
+def impulseResponseBPF(Fs, pass_band, num_taps):
+	normcenter = ((pass_band[1]+pass_band[0])/2)/(Fs/2)
+	normpass = (pass_band[1]-pass_band[0])/(Fs/2)
+
+	h = np.zeros(num_taps)
+
+	for i in range(num_taps):
+		if i == (num_taps-1)/2:
+			h[i] = normpass
+		else:
+			h[i] = normpass*((math.sin(math.pi*(normpass/2.0)*(i-(num_taps-1)/2.0)))/(math.pi*(normpass/2.0)*(i-(num_taps-1)/2.0)))
+		h[i] = h[i]*math.cos(i*math.pi*normcenter)
+		h[i] = h[i]*math.sin((i*math.pi)/(num_taps))*math.sin((i*math.pi)/(num_taps))
+
+	return h
+
+def impulseResponseLPF(Fc, Fs, N):
+	h = np.zeros(N)
+	fc_norm = Fc/(Fs/2)
+
+	for i in range(N):
+		if i == (N-1)/2:
+			h[i] = fc_norm
+		else:
+			h[i] = fc_norm*math.sin(math.pi*fc_norm*(i-(N-1)/2))/(math.pi*fc_norm*(i-(N-1)/2))
+		h[i] = h[i]*math.sin(i*math.pi/N)*math.sin(i*math.pi/N)
+	return h
+
+def impulseResponseLPFupsampled(Fc, Fs, N, gain):
+	h = np.zeros(N)
+	fc_norm = Fc/(Fs/2)
+
+	print(gain)
+	for i in range(N):
+		if i == (N-1)/2:
+			h[i] = gain*fc_norm
+		else:
+			h[i] = gain*fc_norm*math.sin(math.pi*fc_norm*(i-(N-1)/2))/(math.pi*fc_norm*(i-(N-1)/2))
+		h[i] = h[i]*math.sin(i*math.pi/N)*math.sin(i*math.pi/N)
+	return h
+
+
+
+def convfilter(filter_coeff, input_data, initial_state):
+	n = len(input_data)
+	k = len(filter_coeff)
+	y = np.zeros(n)
+
+	next_state = input_data[-k+1:]
+
+	for i in range(len(y)):
+		for m in range(k):
+			if (i-m) < 0:
+				y[i] += filter_coeff[m]*initial_state[i-m]
+			elif (i-m >= n):
+				pass
+			else:
+				y[i] += filter_coeff[m]*input_data[i-m]
+	return y, next_state
+
+def convfilter_resample(filter_coeff, input_data, initial_state, downsample, upsample, gain):
+	n = len(input_data)
+	k = len(filter_coeff)
+	y = np.zeros(int(n*upsample/downsample))
+
+	phase = 0
+
+	next_state = input_data[-k+1:]
+	
+
+	for i in range(int(n*upsample/downsample)):
+		phase = (i*downsample) % upsample
+		for w in range(phase, k, upsample):
+			x_index = int((i*downsample-w)/upsample)
+			if (x_index < 0):
+				y[i] += ((filter_coeff[w]*initial_state[x_index]))
+			else:
+				y[i] += (filter_coeff[w]*input_data[x_index])
+
+	return y, next_state
+
 def fmDemodArctan(I, Q, prev_phase = 0.0):
 #
 # the default prev_phase phase is assumed to be zero, however
