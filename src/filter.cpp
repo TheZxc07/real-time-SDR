@@ -81,17 +81,22 @@ void impulseResponseRRC(float Fs, unsigned short int num_taps, std::vector<float
 	float T_symbol = 1/2375.0;
 	float beta = 0.90;
 	float t;
-
+	
+	std::cerr << -T_symbol/(4.0*beta) << std::endl;
+	
 	h.clear(); h.resize(num_taps, 0.0);
 
 	for(int i = 0; i < num_taps; i++){
-		t =((float)(i-num_taps)/2.0)/Fs;
+		t =(i-(float)num_taps/2.0)/Fs;
 		if(t==0.0){
 			h[i] = 1.0 + beta*((4.0/PI)-1);
 		} else if((t==(-T_symbol/(4.0*beta))) | (t==(T_symbol/(4.0*beta)))){
+			std::cerr<<i<<std::endl;
 			h[i] = (beta/sqrt(2.0))*((1-2.0/PI)*(sin(PI/(4.0*beta)))) + ((1-2.0/PI)*(cos(PI/(4*beta))));
 		} else{
 			h[i] = (sin(PI*t*(1-beta)/T_symbol) + 4.0*beta*(t/T_symbol)*cos(PI*t*(1+beta)/T_symbol))/(PI*t*(1-(4.0*beta*t/T_symbol)*(4.0*beta*t/T_symbol))/T_symbol);
+			
+			//std::cerr << (sin(t)) << std::endl;
 		}
 	}
 }
@@ -123,7 +128,7 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 	int x_index = 0;
 	for (int n = 0; n < (int)y.size(); n+=1) { //for each final value in y,
 		//std::cerr<<phase<<std::endl;
-		//phase = (n * decimation_factor) % upsample; // phase to start the convolution
+		phase = (n * decimation_factor) % upsample; // phase to start the convolution
 		for (int k = phase; k < (int)h.size(); k+=upsample){ //only take the filter coeffs from the bank used in current y value
 			x_index = (n*decimation_factor-k)/upsample; //yu = n*decim, xu = yu - k, x = xu / upsample
 			if (x_index < 0) {
@@ -133,8 +138,8 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 			}
 		}
 		
-		phase += decimation_factor;
-		phase = phase >= upsample ? 0 : phase;
+		//phase += decimation_factor;
+		//phase = phase >= upsample ? phase-upsample : phase;
 	}
 
 	initial_state = std::vector<float>(x.end()-h.size()+1,x.end());

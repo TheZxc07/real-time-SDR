@@ -121,7 +121,6 @@ int main(int argc, char* argv[])
 				break;
 			// Type R
 			case 114:
-				audio_func = &rds_mode0;
 				audio_func = &stereo_mode0;
 				//std::thread audio_thread(&rds_mode0, &func_args);
 				break;
@@ -130,9 +129,12 @@ int main(int argc, char* argv[])
 			break;
 		}
 	}
-	std::thread audio_thread(audio_func, &func_args);
+	std::thread rds_thread(&rds, &func_args);
+	//std::thread audio_thread(audio_func, &func_args);
 	std::thread rf_frontend_thread(&RF_frontend, &func_args);
-	audio_thread.join();
+	
+	rds_thread.join();
+	//audio_thread.join();
 	rf_frontend_thread.join();
 	
 	//int mode = (int)(*argv[1])-'0';
