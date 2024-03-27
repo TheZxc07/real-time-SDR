@@ -487,6 +487,7 @@ if __name__ == "__main__":
                         if group_good_blocks_counter == 5:
                             #print(bytes)
                             bytes_out.append(bytes) # list of len-8 lists of bytes
+                            print(register)
                             chars, output, first_time = parse(register, first_time, chars, output)
 
 

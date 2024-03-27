@@ -61,7 +61,7 @@ def fmPll(pllIn, freq, Fs, state, ncoScale = 1.0, phaseAdjust = 0.0, normBandwid
 	normBandwidth	float
 
 					normalized bandwidth for the loop filter
-
+          
 					(relative to the sampling rate)
 
 
