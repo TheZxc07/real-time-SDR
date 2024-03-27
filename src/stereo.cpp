@@ -7,7 +7,7 @@
 #include "fourier.h"
 #include "dy4.h"
 
-void stereo_mode0(args* p){
+void stereo(args* p){
 	
 	int block_size = (1470 * p->audio_decim)/p->audio_upsample;
 	
@@ -35,8 +35,6 @@ void stereo_mode0(args* p){
 	int stereo_sample = 0;
 	short left_sample;
 	short right_sample;
-	//float left;
-	//float right;
 	short sample;
 	
 	std::vector<float>* fm_demod;
@@ -49,15 +47,6 @@ void stereo_mode0(args* p){
 	mono_delay_state.resize(p->rf_taps-1, 0.0), stereo_state.resize(p->rf_taps-1, 0.0);
 	mono_state.resize(p->rf_taps-1, 0.0), extracted_stereo_band_state.resize(p->rf_taps-1, 0.0);
 	extracted_pilot_state.resize(p->rf_taps-1, 0.0);
-		
-	float feedbackI = 1.0;
-    float feedbackQ = 0.0;
-    float integrator = 0.0;
-    float phaseEst = 0.0;
-    float trigOffset = 0;
-    float lastCarrier = 1.0;
-    
-    // pllblock_args block_args = {feedbackI, feedbackQ, integrator, phaseEst, trigOffset, lastCarrier};
 
     pllblock_args block_args;
 	block_args.feedbackI = 1.0;
@@ -70,92 +59,44 @@ void stereo_mode0(args* p){
 	float fb_pilot[] = { 18.5e3, 19.5e3 };
 	float fb_carrier[] = { 37.5e3, 38.5e3};
 	float fb_stereo[] = { 22e3, 54e3 };
-	std::vector<float> x = std::vector<float>(carrier.size());
 	
 	impulseResponseAPF(1, p->rf_taps, mono_delay_h);
 	impulseResponseLPF(p->if_Fs*p->audio_upsample, p->audio_Fc, p->rf_taps*p->audio_upsample, audio_h, p->audio_upsample);
 	impulseResponseBPF(p->rf_Fs/p->rf_decim, fb_pilot, p->rf_taps, pilot_h);
 	impulseResponseBPF(p->rf_Fs/p->rf_decim, fb_carrier, p->rf_taps, carrier_h);
-	//std::cerr << p->rf_Fs/p->rf_decim << std::endl;
-	//exit(1);
-	
 	impulseResponseBPF(p->rf_Fs/p->rf_decim, fb_stereo, p->rf_taps, stereo_h);
 	
-	std::vector<std::complex<float>> pllCheckfreq;
-	std::vector<float> Xf;
-	std::vector<float> pllCheck1;
-	std::vector<float> ncoCheck1;
-	std::vector<float> pllCheck0;
-	std::vector<float> ncoCheck0;
-	std::vector<float> stereoCheck;
-	std::vector<float> errorDCheck;
-	std::vector<float> phaseEstCheck;
-	std::vector<float> index;
-	std::vector<float> carrier_state;
-	carrier_state.resize(p->rf_taps-1, 0.0);
-	std::vector<float> carrier_bpf;
-	carrier_bpf.resize(block_size, 0.0);
-	errorDCheck.clear(); errorDCheck.resize(block_size, 0.0);
-	phaseEstCheck.clear(); phaseEstCheck.resize(block_size*100, 0.0);
-	int cont = 0;
 	while(true){
-		//while(!(p->queue.empty())){
-		//std::cerr << "Processing block: " << block_count << "\n";
+		// Retrieve demodulated FM data from the front end.
+		p->queue.wait_and_pop(fm_demod, 0);
 		
-		p->queue.wait_and_pop(fm_demod);
-		
-		// 19 KHz pilot tone extraction
+		// 19 KHz pilot tone extraction.
 		convolveFIR(extracted_pilot, *fm_demod, pilot_h, extracted_pilot_state, 1);
-		// Locking a 38 KHz tone to 19 KHz pilot using PLL
+		
+		// Locking a 38 KHz tone to 19 KHz pilot using PLL.
 		fmpll(extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0, 0, 0.01);
-		// Stereo channel extraction
-		//convolveFIR(carrier_bpf, carrier, carrier_h, carrier_state, 1);
+		
+		// Stereo channel extraction.
 		convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
 		
 		// Perform stereo downconversion to baseband by mixing with carrier DSB-SC demodulation.
 		for (unsigned int i = 0; i < extracted_stereo_band.size(); i++){
-			stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];//carrier[i];
-			//std::cerr << stereo_dc[i] << std::endl;
+			stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];
 		}
-		/*
-		for (unsigned int i = 0; i < extracted_stereo_band.size(); i++){
-			stereo_dc[i] = 4.0*stereo_dc[i]*extracted_pilot[i];//carrier[i];
-			//std::cerr << stereo_dc[i] << std::endl;
-		}
-		if (block_count == 11){
-			estimatePSD(stereo_dc, NFFT, 240, index, errorDCheck);
-			logVector("PSD_stereo_dc_2pass", index, errorDCheck);
-			exit(1);
-		}
-		*/
+		
 		// Delay block (convolution with an impulse shifted in time)
 		convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
 		
-		p->queue.prepare();
-		
-		//for (int i = 50; i < fm_demod->size(); i++){
-			//mono_delay[i] = (*fm_demod)[i-50];
-		//}
-		
-		
-		/*
-		for (int i = 0; i < (*fm_demod).size() + ((p->rf_taps-1)/2); i++){
-			if (i < ((p->rf_taps-1)/2)) {
-				mono_delay[i] = mono_delay_state[i];
-			}else if(i > (*fm_demod).size()){
-				mono_delay_state[i - (*fm_demod).size()] = (*fm_demod)[i];
-			}else {
-				mono_delay[i] = (*fm_demod)[i - ((p->rf_taps-1)/2)];
-			}
-		}
-		*/
+		// Indicate to RF frontend audio thread is prepared to recieve more demodulated FM data.
+		p->queue.prepare(0);
 
-		// Mono channel extraction
+		// Mono channel extraction.
 		convolveFIR(mono_filt, mono_delay, audio_h, mono_state, p->audio_upsample, p->audio_decim);
-		// Stereo channel extraction
+		
+		// Stereo channel extraction.
 		convolveFIR(stereo_filt, stereo_dc, audio_h, stereo_state, p->audio_upsample, p->audio_decim);
 		
-		// Interleaving left and right samples into stereo vector
+		// Interleaving left and right samples into stereo vector + scaling to int16 for aplay.
 		while (stereo_sample < 2*(block_size*p->audio_upsample)/p->audio_decim){
 			right_sample = static_cast<short int>(16384*(mono_filt[stereo_sample >> 1] - stereo_filt[stereo_sample >> 1]));
 			left_sample = static_cast<short int>(16384*(mono_filt[stereo_sample >> 1] + stereo_filt[stereo_sample >> 1]));
@@ -166,37 +107,9 @@ void stereo_mode0(args* p){
 		}
 		stereo_sample = 0;
 	
-		// Writing to standard out UNIX pipe for aplay
+		// Writing to standard out UNIX pipe for aplay.
 		fwrite(&stereo[0], sizeof(short int), stereo.size(), stdout);
-
-		delete fm_demod;
-		block_count++;
-		//}
 		
+		block_count++;
 	}
-	 
-	/*
-	while(true){
-
-	std::cin.read(reinterpret_cast<char*>(IQ_buf.data()), 2*block_size);
-
-		while(sample_num < 2*block_size){
-			iq_sample = ((float)IQ_buf[sample_num]-128.0)/128.0;
-			IQ_index = sample_num & 0x01;
-			(*IQ[IQ_index])[sample_num >> 1] = iq_sample;
-			sample_num += 1;
-		}
-	sample_num = 0;
-	
-	}
-	*/
-	
-	
-	//std::cerr << "TODO! - To be implemented in future renditions.\n";
 }
-
-void stereo_mode1(){std::cerr << "TODO! - To be implemented in future renditions.\n";}
-
-void stereo_mode2(){std::cerr << "TODO! - To be implemented in future renditions.\n";}
-
-void stereo_mode3(){std::cerr << "TODO! - To be implemented in future renditions.\n";}

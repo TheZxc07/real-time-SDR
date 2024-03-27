@@ -82,7 +82,7 @@ void impulseResponseRRC(float Fs, unsigned short int num_taps, std::vector<float
 	float beta = 0.90;
 	float t;
 	
-	std::cerr << -T_symbol/(4.0*beta) << std::endl;
+	//std::cerr << -T_symbol/(4.0*beta) << std::endl;
 	
 	h.clear(); h.resize(num_taps, 0.0);
 

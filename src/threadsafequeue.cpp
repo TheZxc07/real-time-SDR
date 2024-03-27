@@ -1,5 +1,8 @@
 //#include "threadsafequeue.h"
 /*
+ * ====================DEPRECATED====================
+ * ====CHECK threadsafequeue.h FOR IMPLEMENTATION====
+ * ==================================================
 template <typename T>
 ThreadSafeQueue<T>::ThreadSafeQueue() {}
 

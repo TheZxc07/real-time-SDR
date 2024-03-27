@@ -9,11 +9,12 @@ template <typename T>
 class ThreadSafeQueue {
 private:
     
-    //std::queue<T> data_queue;
     T data = nullptr;
-    int flag = 1;
+    int audio_thread_ready = 1;
+    int rds_thread_ready = 1;
+    int data_ready = 0;
+    int data_read[2] = { 0, 0 };
     mutable std::mutex m;
-    bool ready = true;
     std::condition_variable consumerCV;
     std::condition_variable producerCV;
 
@@ -24,57 +25,50 @@ public:
 		
 		std::unique_lock<std::mutex> lock(m);
 		
-		if (ready){
-			if(data){
-				delete data;
-			}
-			data = value;
-			
-		} else{
-			producerCV.wait(lock, [this] { return ready; });
-			if(data){
-				delete data;
-			}
-			data = value;
+		// Producer waits until both consumer threads are ready
+		while (!(audio_thread_ready && rds_thread_ready)) {
+			producerCV.wait(lock);
 		}
-		ready = false;
-		flag = 0;
-		//data = value;//data_queue.push(value);
+    
+		// Once both threads are ready, proceed with data insertion
+		if (data) {
+			delete data;
+		}
+		data = value;
+		audio_thread_ready = 0;
+		rds_thread_ready = 0;
+		data_read[0] = 0;
+		data_read[1] = 0;
+		data_ready = 1;
 		consumerCV.notify_all();
 	}
-	/*
-    bool try_pop(T value) {
-		std::lock_guard<std::mutex> lock(m);
-		if (data_queue.empty())
-			return false;
-		value = data_queue.front();
-		data_queue.pop();
-		return true;
-	}
-	*/
-    void wait_and_pop(T& value) {
+
+    void wait_and_pop(T& value, int indicator) {
         std::unique_lock<std::mutex> lock(m);
-        //cv.notify_all();
-		consumerCV.wait(lock, [this] { return !ready; });
-		//flag++;
+
+        // Wait until data is ready and not read by this consumer thread
+		while (!(data_ready && !data_read[indicator])) {
+			consumerCV.wait(lock);
+		}
+		
+		// Retrieve data and mark it as read by this thread.
 		value = data;
-		//data_queue.pop();
+		data_read[indicator] = 1;
+		
+		// If both threads have read the data, reset data_ready.
+		if (data_read[0] && data_read[1]) {
+			data_ready = 0;
+		}
 		lock.unlock();
 	}
-	/*
-    bool empty() const {
-		std::lock_guard<std::mutex> lock(m);
-		return data_queue.empty();
-	}
-	*/
 	
-	void prepare(){
+	void prepare(int indicator){
 		std::lock_guard<std::mutex> lock(m);
-		flag++;
-		if (flag == 1){
-			ready = true;
-		} else{
-			ready = false;
+		if (indicator == 1){
+			rds_thread_ready = 1;
+		}
+		if (indicator == 0){
+			audio_thread_ready = 1;
 		}
 		producerCV.notify_all();
 	}
