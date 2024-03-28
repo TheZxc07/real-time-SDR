@@ -119,6 +119,21 @@ void stringify(uint64_t characters, char* combined){
 }
 
 
+const std::vector<std::vector<bool>> parity_matrix = {
+     {1,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1},
+     {0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1},
+     {0,0,1,0,0,0,0,0,0,0,1,0,1,1,1,0,0,0,1,0,1,1,1,1,1,0},
+     {0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,0,0,0},
+     {0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,0,0},
+     {0,0,0,0,0,1,0,0,0,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,0,1},
+     {0,0,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1,1},
+     {0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,0},
+     {0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1},
+     {0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1} 
+};
+
+const std::vector<bool> syndrome_bits = { 1,1,1,1,0,1,1,0,0,0,1,1,1,1,0,1,0,1,0,0,1,0,0,1,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1,0,0,1,0,1,1,0,0,0 };
+
 const char* PTY_codes[] = {
     "Undefined",
     "News",
@@ -161,7 +176,7 @@ void parse (const uint64_t &bytes, uint64_t &chars, uint64_t &output, bool &firs
     uint16_t PI = (bytes >> 48) & 0xFFFF;
     uint8_t PTY_data = (bytes >> 37) & 0x1F;
     
-    if (first_time){
+    if (1){
         std::cerr << "PI: " << PI << std::endl;
         std::cerr << "PTY: " << PTY_codes[PTY_data] << std::endl;
         first_time = false;
@@ -191,7 +206,7 @@ void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &fir
         reg = (reg << 1) | decoded_bits[i];
         if(!sync){
             reg_syndrome = calc_syndrome(reg, 26);
-            //std::cerr << "Reg Syndrome: " << reg_syndrome << "    Reg: " << reg << std::endl;
+            std::cerr << "Reg Syndrome: " << reg_syndrome << "    Reg: " << reg << std::endl;
             for (int j = 0; j < 5; j++){
                 if (reg_syndrome == syndromes[j]){
                     if (!prevsync){
@@ -289,4 +304,102 @@ void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &fir
     //std::cerr << rds_bit_cont << std::endl;
     //exit(1);
     
+}
+
+void uint_copy(uint64_t &reg, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, int block_type){
+    //types A = 0, B = 1, C = 2, D = 3
+    
+    std::vector<int> scan(bitstream_start, bitstream_end);
+    
+    uint64_t mask = ~(0xFFFF << (48-16*block_type));
+    
+    reg = reg & mask;
+    
+    std::cerr << "Block detected: " << std::hex << reg << std::endl;
+    std::cerr << scan.size() << std::endl;
+    for(int i = 0; i < scan.size(); i++){
+        reg = reg | (scan[i] << (16 - i + 48 - 16*block_type));
+    }
+    
+}   
+
+bool isSequenceABCD(std::string current, std::deque<std::string> &window) {
+    window.push_back(current);
+    if (window.size() > 4)
+        window.pop_front();
+
+    // Check if the current window forms the sequence A->B->C->D
+    if (window.size() == 4 && window[0] == "A" && window[1] == "B" && window[2] == "C" && window[3] == "D") {
+        return true; // Sequence found
+    }
+
+    return false; // Sequence not found
+}
+
+void checkSynch(std::string &offset_type, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+    std::vector<bool> parity_vec(26); // Resize only once
+    std::vector<bool> prod(26, false); // Initialize to false
+    std::vector<bool> syndrome_vec(10); // Fixed size
+
+    for (int col = 0; col < 10; col++) {
+
+        // Element-wise multiplication (AND)
+        std::transform(bitstream_start, bitstream_end, parity_matrix[col].begin(), prod.begin(), std::multiplies<bool>());
+		
+        // Sum (XOR) of products
+        syndrome_vec[col] = (std::count(prod.begin(), prod.end(), true) % 2) == 1;
+    }
+    
+    // Check for syndrome_vec in syndrome_vecs
+    for (unsigned int idx = 0; idx <= 40; idx += 10) {
+        if (std::equal(syndrome_bits.begin() + idx, syndrome_bits.begin() + idx + 10, syndrome_vec.begin())) {
+            switch (idx) {
+                case 0: { offset_type = "A"; uint_copy(reg, bitstream_start, bitstream_end -10, 0); break; }
+                case 10:{ offset_type = "B"; uint_copy(reg, bitstream_start, bitstream_end -10, 1); break; }
+                case 20:{ offset_type = "C"; uint_copy(reg, bitstream_start, bitstream_end -10, 2); break; }
+                case 30: offset_type = "Cp"; break;
+                case 40:{ offset_type = "D"; uint_copy(reg, bitstream_start, bitstream_end -10, 3);  break;}
+            }
+            if (isSequenceABCD(offset_type, window)){
+                std::cerr << std::hex << reg << std::endl;
+                parse(reg, chars, output, first_time);
+            }
+            for (int i = 0; i < window.size(); i++){
+                std::cerr << window[i] << " ";
+            }
+            std::cerr << std::endl;
+
+            return; // Exit early if offset_type is set
+        }
+    }
+    offset_type = "None"; // If not found, set to "None"
+}
+
+
+void startSynch(unsigned int &idx, std::vector<int> &stream, std::vector<int> &synch_state_bits, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+    stream.insert(stream.begin(), synch_state_bits.begin(), synch_state_bits.end());
+    
+    std::string x = "";
+    unsigned int endRange = stream.size() - 26;
+ 
+	while (idx < endRange) {        
+        checkSynch(x, stream.begin()+idx, stream.begin()+idx+26, reg, chars, output, first_time, window);
+        if(x != "None"){
+			std::cerr << "************ Synchronized at index " << idx << std::endl;
+            std::cerr << x << std::endl;
+			idx += 26;
+		}
+		else
+			idx += 1;
+    }
+	synch_state_bits.clear();
+	synch_state_bits.insert(synch_state_bits.begin(), stream.begin() + idx, stream.end());
+}
+
+void genSyndromeVector(std::vector<bool> &syndrome_vecs){
+    std::string bits = "11110110001111010100100101110011110011001001011000";
+
+    for(unsigned int i = 0; i < bits.size(); i++){
+        syndrome_vecs.emplace_back(bits[i] - '0');
+    }
 }
