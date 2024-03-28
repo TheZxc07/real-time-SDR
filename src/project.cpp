@@ -63,8 +63,8 @@ int main(int argc, char* argv[])
 		//bandtype type;  UNUSED VAR
 
 
-		switch((int)(*argv[1])){
-			case 48:
+		switch(std::atoi(argv[1])){
+			case 0:
 				// up is default to 1
 				func_args.rf_Fs= 2.4e6;
 				func_args.rf_decim = 10;
@@ -72,14 +72,14 @@ int main(int argc, char* argv[])
 				func_args.if_Fs=240e3;
 				//func_args.down = 5;
 				break;
-			case 49:
+			case 1:
 				func_args.rf_Fs= 1.44e6;
 				func_args.rf_decim = 4;
 				func_args.audio_decim=9;
 				func_args.if_Fs=360e3;
 				//func_args.down = 9;
 				break;
-			case 50:
+			case 2:
 				func_args.rf_Fs= 2.4e6;
 				func_args.rf_decim = 10;
 				func_args.audio_decim=800;
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 				// have to add upsample and downsample
 				break;
 			
-			case 51:
+			case 3:
 				func_args.rf_Fs=  1.152e6;
 				func_args.rf_decim = 3;
 				func_args.audio_decim=1280;

@@ -43,7 +43,7 @@ void estimatePSD(const std::vector<float> &samples, int nfft, int Fs, std::vecto
   
   
 
-	for (int i = 0; i < freq.size(); i++){
+	for (int i = 0; i < (int)freq.size(); i++){
 		freq[i] = (i*df);
 	}
   std::cerr << "HELLO" << std::endl;
@@ -51,7 +51,7 @@ void estimatePSD(const std::vector<float> &samples, int nfft, int Fs, std::vecto
 	std::vector<float> hann;
 	hann.resize(freq_bins, 0);
 	
-	for (int j = 0; j < hann.size(); j++){
+	for (int j = 0; j < (int)hann.size(); j++){
 		hann[j] = std::pow(std::sin(j*PI/freq_bins), 2);
 	}
 
@@ -62,7 +62,7 @@ void estimatePSD(const std::vector<float> &samples, int nfft, int Fs, std::vecto
 	for (int k = 0; k < no_segments; k++){
 		std::vector<float> windowed_samples = std::vector<float>(samples.begin() + k*freq_bins, samples.begin() + (k+1)*freq_bins);
 
-		for (int w = 0; w < windowed_samples.size(); w++){
+		for (int w = 0; w < (int)windowed_samples.size(); w++){
 			windowed_samples[w] *= hann[w];
 		}
 
@@ -73,7 +73,7 @@ void estimatePSD(const std::vector<float> &samples, int nfft, int Fs, std::vecto
 		std::vector<float> psd_seg;
 
 		psd_seg.resize(Xf_positive.size(), 0);
-		for (int l = 0; l < Xf_positive.size(); l++){
+		for (int l = 0; l < (int)Xf_positive.size(); l++){
 			psd_seg[l] = 2*(1/(Fs*freq_bins/2))*std::abs(Xf_positive[l])*std::abs(Xf_positive[l]);
 			psd_seg[l] = 10*std::log10(psd_seg[l]);
 			psd_list.push_back(psd_seg[l]);

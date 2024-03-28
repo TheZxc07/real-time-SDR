@@ -8,7 +8,6 @@
 
 void RF_frontend(args* p){
 	
-	std::vector<float> audio_h;
 	std::vector<float> rf_h;
 	
 	int rf_Fs = p->rf_Fs;
@@ -23,7 +22,6 @@ void RF_frontend(args* p){
 	int block_count = 0;
 	
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_h);
-	//impulseResponseLPF(audio_Fs, audio_Fc, rf_taps, audio_h);
 	
 	float iq_sample;
 	int sample_num = 0;
@@ -44,16 +42,19 @@ void RF_frontend(args* p){
 	float prev_I = 0, prev_Q = 0;
 	std::vector<float>* IQ[] = {&I, &Q};
 	
-	std::vector<float> fmdemodCheck;
-	std::vector<std::complex<float>> fmDemodXf;
-	std::vector<float> XfMag;
-	
 	while(true){
 		
+		// Read from standard input buffer raw IQ data <- RF dongle.
 		std::cin.read(reinterpret_cast<char*>(&IQ_buf[0]), 2*block_size*sizeof(char));
 		
+		if(std::cin.eof()){
+			exit(1);
+		}
+		
+		// Initialize new block of FM demodulated data.
 		fm_demod = new std::vector<float>(block_size/rf_decim);
 
+		// Seperate I and Q samples into individual vectors.
 		while(sample_num < 2*block_size){
 			iq_sample = float(((unsigned char)IQ_buf[sample_num]-128.0)/128.0);
 			IQ_index = sample_num & 0x01;
@@ -62,11 +63,14 @@ void RF_frontend(args* p){
 		}
 		sample_num = 0;
 		
+		// Extract 100 KHz FM band channel through LPF.
 		convolveFIR(I_ds, I, rf_h, state_I, rf_decim);
 		convolveFIR(Q_ds, Q, rf_h, state_Q, rf_decim);
 		
+		// Demodulate FM data.
 		fmDemodNoArctan(I_ds, Q_ds, prev_I, prev_Q, *fm_demod);
 		
+		// Push block of FM data onto sync queue.
 		p->queue.push(fm_demod);
 		block_count++;
 	}

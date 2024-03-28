@@ -81,59 +81,64 @@ void rds(args* p){
 		//std::cerr << "Processing block: " << block_count << "\n";
         p->queue.wait_and_pop(fm_demod, 1);
         
-        // RDS band extraction through BPF
+        // RDS band extraction through BPF.
         convolveFIR(rds_band, *fm_demod, rds_h, rds_band_state, 1);
 
+		// Indicate to RF frontend, RDS thread is prepared to recieve more demodulated FM data.
         p->queue.prepare(1);
         
-        // Squaring Non-Linearity to generate pilot at 114 KHz
+        goto end;
+        
+        // Squaring Non-Linearity to generate pilot at 114 KHz.
         for (int i = 0; i < block_size; i++){
             rds_band_squared[i] = 2*rds_band[i]*rds_band[i];
         }
       
-        // 114 KHz pilot extraction through BPF
+        // 114 KHz pilot extraction through BPF.
         convolveFIR(gen_pilot, rds_band_squared, pilot_h, gen_pilot_state, 1);
         
-        // Generate a 57 KHz tone from 114 KHz pilot
+        // Generate a 57 KHz tone from 114 KHz pilot.
         fmpll(gen_pilot, 114e3, if_Fs, IPLL, block_args, 0.5, 0, 0.001);
         
 
-        // Delay the RDS band to phase align with the carrier
+        // Delay the RDS band to phase align with the carrier.
         convolveFIR(rds_band_delay, rds_band, rds_delay_h, rds_band_delay_state, 1);
 
-        // Mixing to downconvert RDS band to baseband
+        // Mixing to downconvert RDS band to baseband.
         for (int i = 0; i < block_size; i++){
             rds_dc[i] = 2*rds_band_delay[i]*IPLL[i];
         }
 
-        // Extract RDS band through LPF
+        // Extract RDS band through LPF.
         convolveFIR(rds_filt, rds_dc, rds_baseband_h, rds_filt_state, 247, 640);
 	
-        // Pass RDS band through RRC filter to reduce ISI
+        // Pass RDS band through RRC filter to reduce ISI.
         convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
 
-        // Perform clock and data recovery to produce sample offset
+        // Perform clock and data recovery to produce sample offset.
         sample_offset = cdr(sps, rds_clean);
         
         //std::cerr << sample_offset << std::endl;
-        // Take every sps-th element starting at offset from the clean RDS signal to recover symbols
         
+        // Take every sps-th element starting at offset from the clean RDS signal to recover symbols.
         symbols.clear();
-        for (int i = 0; sample_offset + i*sps < rds_clean.size(); i++){
+        for (int i = 0; sample_offset + i*sps < (int)rds_clean.size(); i++){
             symbols.push_back(rds_clean[sample_offset + i*sps] > 0);
             //if(symbols[i] == symbols[i-1])
         }
         
-        // Perform Manchester decoding to extract bits from symbols
+        // Perform Manchester decoding to extract bits from symbols.
         manchester_decode(bits, symbols, block_count, half_symbol, start);
 
-        // Perform differential decoding to recover bitstream
+        // Perform differential decoding to recover bitstream.
         differential_decode(decoded_bits, bits, last_bit, block_count);
-		
 		
 		error_detection(reg, chars, output, first_time, sync, prevsync, lastseen_offset, rds_bit_cont, lastseen_offset_cont, block_distance, block_number, block_bit_cont, block_cont, wrong_blocks_cont, group_assembly_started, group_good_blocks_conts, decoded_bits);
 		
 		block_count++;
+		
+		end:
+		continue;
     }
 
 }

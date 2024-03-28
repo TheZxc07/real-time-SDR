@@ -8,8 +8,6 @@ void mono(args* p){
 	
 	std::vector<float> audio_h;
 
-	int rf_Fs = p->rf_Fs;
-	int rf_Fc = p->rf_Fc;
 	unsigned short int rf_taps = p->rf_taps;
 	//int rf_decim = p->rf_decim;
 	int audio_decim = p->audio_decim;
@@ -31,10 +29,10 @@ void mono(args* p){
 		// Retrieve demodulated FM data from the front end.
 		p->queue.wait_and_pop(fm_demod, 0);
 
-		// Mono channel extraction.
+		// Mono subchannel extraction.
 		convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_upsample, audio_decim);
 		
-		// Indicate to RF frontend audio thread is prepared to recieve more demodulated FM data.
+		// Indicate to RF frontend, audio thread is prepared to recieve more demodulated FM data.
 		p->queue.prepare(0);
 		
 		// Scaling to int16 for aplay.

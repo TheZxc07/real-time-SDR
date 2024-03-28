@@ -30,8 +30,6 @@ void fmpll(const std::vector<float> &pllIn, float freq, float Fs, std::vector<fl
 
     float errorI, errorQ, errorD = 0;
     
-    float prevD = 0;
-    
     //std::cerr << Fs << std::endl;
     for (int i = 0; i < (int)pllIn.size(); i++){
 

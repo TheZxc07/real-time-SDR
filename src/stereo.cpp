@@ -76,7 +76,7 @@ void stereo(args* p){
 		// Locking a 38 KHz tone to 19 KHz pilot using PLL.
 		fmpll(extracted_pilot, 19e3, p->rf_Fs/p->rf_decim, carrier, block_args, 2.0, 0, 0.01);
 		
-		// Stereo channel extraction.
+		// Stereo subchannel extraction.
 		convolveFIR(extracted_stereo_band, *fm_demod, stereo_h, extracted_stereo_band_state, 1);
 		
 		// Perform stereo downconversion to baseband by mixing with carrier DSB-SC demodulation.
@@ -84,7 +84,7 @@ void stereo(args* p){
 			stereo_dc[i] = 2.0*extracted_stereo_band[i]*carrier[i];
 		}
 		
-		// Delay block (convolution with an impulse shifted in time)
+		// Delay the extracted mono path to phase align with stereo
 		convolveFIR(mono_delay, *fm_demod, mono_delay_h, mono_delay_state, 1);
 		
 		// Indicate to RF frontend audio thread is prepared to recieve more demodulated FM data.

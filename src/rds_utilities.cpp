@@ -5,7 +5,7 @@ int cdr(int sps, const std::vector<float> &signal){
     int maxi = 0, maxv = 0, sum = 0;
 
     for (int i = 0; i < sps; i++){
-        for (int k = 0; k < signal.size()/sps; k++){
+        for (int k = 0; k < (int)signal.size()/sps; k++){
             sum += abs(signal[k*sps + i]);
         }
 
@@ -23,7 +23,7 @@ int cdr(int sps, const std::vector<float> &signal){
 int manchester_united(const std::vector<float> &samples){
     int score = 0;
 
-    for (int i = 0; i < samples.size() - 1; i+=2){
+    for (int i = 0; i < (int)samples.size() - 1; i+=2){
         score += (samples[i]*samples[i+1] > 0); 
     }
 
@@ -41,10 +41,10 @@ void manchester_decode(std::vector<int> &bits, const std::vector<int> &symbols, 
 
     if (block_count == 0){
         score = 0;
-        for (int i = 0; i < symbols.size()-1; i+=2){
+        for (int i = 0; i < (int)symbols.size()-1; i+=2){
             score+=symbols[i]^symbols[i+1];
         }
-        for (int j = 1; j < symbols.size()-1; j+=2){
+        for (int j = 1; j < (int)symbols.size()-1; j+=2){
             score-=symbols[j]^symbols[j+1];
         }
         start = score < 0;
@@ -52,7 +52,7 @@ void manchester_decode(std::vector<int> &bits, const std::vector<int> &symbols, 
     
     //std::cerr << "START: " << start << std::endl;
 
-    for (int i = start; i < symbols.size()-1; i+=2){
+    for (int i = start; i < (int)symbols.size()-1; i+=2){
         //std::cerr << "i: " << i << " " << "symbol: " << symbols[i] << std::endl;
         
         bits.push_back(symbols[i]);
@@ -80,7 +80,7 @@ void differential_decode(std::vector<int> &decoded_bits, const std::vector<int> 
         decoded_bits[0] = bits[0]^last_bit;
     }
 
-    for (int i = 1; i < bits.size(); i++){
+    for (int i = 1; i < (int)bits.size(); i++){
         decoded_bits[i] = bits[i]^bits[i-1];
     }
 
@@ -106,16 +106,6 @@ uint64_t calc_syndrome(uint64_t x, uint64_t mlen){
     }
 
     return reg & ((1 << plen) - 1);
-}
-
-void decode(){
-    int syndrome[] = { 383, 14, 303, 663, 748 };
-    int offset_pos[] = { 0, 1, 2, 3, 2 };
-    int offset_word[] = { 252, 408, 360, 436, 848 };
-
-
-
-
 }
 
 void stringify(uint64_t characters, char* combined){
@@ -190,65 +180,6 @@ void parse (const uint64_t &bytes, uint64_t &chars, uint64_t &output, bool &firs
 }
 
 
-
-void parse(){
-    std::string pty_table[32][2] = {
-        {"Undefined", "Undefined"},
-        {"News", "News"},
-        {"Current Affairs", "Information"},
-        {"Information", "Sports"},
-        {"Sport", "Talk"},
-        {"Education", "Rock"},
-        {"Drama", "Classic Rock"},
-        {"Culture", "Adult Hits"},
-        {"Science", "Soft Rock"},
-        {"Varied", "Top 40"},
-        {"Pop Music", "Country"},
-        {"Rock Music", "Oldies"},
-        {"Easy Listening", "Soft"},
-        {"Light Classical", "Nostalgia"},
-        {"Serious Classical", "Jazz"},
-        {"Other Music", "Classical"},
-        {"Weather", "Rhythm & Blues"},
-        {"Finance", "Soft Rhythm & Blues"},
-        {"Children’s Programmes", "Language"},
-        {"Social Affairs", "Religious Music"},
-        {"Religion", "Religious Talk"},
-        {"Phone-In", "Personality"},
-        {"Travel", "Public"},
-        {"Leisure", "College"},
-        {"Jazz Music", "Spanish Talk"},
-        {"Country Music", "Spanish Music"},
-        {"National Music", "Hip Hop"},
-        {"Oldies Music", "Unassigned"},
-        {"Folk Music", "Unassigned"},
-        {"Documentary", "Weather"},
-        {"Alarm Test", "Emergency Test"},
-        {"Alarm", "Emergency"}
-    };
-
-    int pty_locale = 1;
-
-    std::string coverage_area_codes[16] = {
-        "Local",
-        "International",
-        "National",
-        "Supra-regional",
-        "Regional 1",
-        "Regional 2",
-        "Regional 3",
-        "Regional 4",
-        "Regional 5",
-        "Regional 6",
-        "Regional 7",
-        "Regional 8",
-        "Regional 9",
-        "Regional 10",
-        "Regional 11",
-        "Regional 12"
-    };
-}
-
 void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &first_time, int &sync, int &prevsync, int &lastseen_offset, int &rds_bit_cont, int &lastseen_offset_cont, int &block_distance, int &block_number, int &block_bit_cont, int &blocks_cont, int &wrong_blocks_cont, int &group_assembly_started, int &group_good_blocks_cont, const std::vector<int> &decoded_bits){
     
     uint64_t reg_syndrome;
@@ -256,7 +187,7 @@ void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &fir
     uint64_t offset_word[] = { 252, 408, 360, 436, 848 };
     int offset_pos[] = { 0, 1, 2, 3, 2};
     
-    for (int i = 0; i < decoded_bits.size(); i++){
+    for (int i = 0; i < (int)decoded_bits.size(); i++){
         reg = (reg << 1) | decoded_bits[i];
         if(!sync){
             reg_syndrome = calc_syndrome(reg, 26);
