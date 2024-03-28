@@ -1,9 +1,4 @@
 #include <iostream>
+#include "args.h"
 
-void rds_mode0();
-
-void rds_mode1();
-
-void rds_mode2();
-
-void rds_mode3();
+void rds(args*);

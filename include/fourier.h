@@ -27,9 +27,7 @@ void computeVectorMagnitude(const std::vector<std::complex<float>> &,
 
 // provide the prototype to estimate PSD
 // ...
-
-//////////////////////////////////////////////////////
-
+void estimatePSD(const std::vector<float> &, int, int, std::vector<float> &, std::vector<float> &);
 // added IDFT and FFT-related functions
 
 void IDFT(const std::vector<std::complex<float>> &, std::vector<std::complex<float>> &);
