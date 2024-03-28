@@ -39,7 +39,8 @@ int main(int argc, char* argv[])
 		240000,
 		16000,
 		48000,
-		39
+		39,
+		false
 	};
 	
 	if (argc < 3){
@@ -122,6 +123,7 @@ int main(int argc, char* argv[])
 			// Type R
 			case 114:
 				audio_func = &stereo;
+				func_args.rds_on = true;
 				//std::thread audio_thread(&rds_mode0, &func_args);
 				break;
 			default:

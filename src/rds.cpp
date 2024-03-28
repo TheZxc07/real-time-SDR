@@ -132,7 +132,7 @@ void rds(args* p){
 		// Pass RDS band through RRC filter to reduce ISI.
 		convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
 		
-		if (block_count > 10){
+		if (block_count > 5 && p->rds_on){
 			// Perform clock and data recovery to produce sample offset.
 			sample_offset = cdr(sps, rds_clean);
 			/*
@@ -182,7 +182,7 @@ void rds(args* p){
 			decoded_bits_stream.insert(decoded_bits_stream.end(), decoded_bits.begin(), decoded_bits.end());
 			
 			if (decoder_cont == 15){
-				startSynch(idx, decoded_bits_stream, decoded_bits_stream_state, reg, chars, output,first_time, window);  
+				start_frame_sync(idx, decoded_bits_stream, decoded_bits_stream_state, reg, chars, output,first_time, window);  
 				decoder_cont = 0;
 				idx = 0;
 				decoded_bits_stream.clear();

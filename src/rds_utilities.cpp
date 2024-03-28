@@ -177,19 +177,23 @@ void parse (const uint64_t &bytes, uint64_t &chars, uint64_t &output, bool &firs
     uint8_t PTY_data = (bytes >> 37) & 0x1F;
     
     if (1){
-        std::cerr << "PI: " << PI << std::endl;
+        std::cerr << "PI: " << std::hex << PI << std::endl;
         std::cerr << "PTY: " << PTY_codes[PTY_data] << std::endl;
         first_time = false;
     }
     
+    
     if (group_type == 0){
-        chars = (chars << 16) | (bytes & 0xFFFF); //shift up characters, add the new ones from the last block
+        uint64_t mask = ~(static_cast<uint64_t>(0xFFFF) << (48-16*placement));
+        chars = chars & mask;
+        uint64_t word = bytes & static_cast<uint64_t>(0xFFFF);
+        chars = chars | (static_cast<uint64_t>(word) << 16*(3-placement)); //shift up characters, add the new ones from the last block
         //note, for 0A or 0B, the last 16 data bits are unchanged
         if ((placement == 3) && (chars != output)){ //if we've filled 8 characters
             output = chars; //update state
             char str[9];
             stringify(chars, str);
-            std::cerr << "Prorgam Service: " << str << std::endl;
+            std::cerr << "Program Service: " << str << std::endl;
         }
     }
 }
@@ -345,22 +349,18 @@ bool isSequenceABCD(std::string current, std::deque<std::string> &window) {
     return false; // Sequence not found
 }
 
-void checkSynch(std::string &offset_type, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+void check_block(std::string &offset_type, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
     std::vector<bool> parity_vec(26); 
     std::vector<bool> prod(26, false); 
     std::vector<bool> syndrome_vec(10); 
 
     for (int col = 0; col < 10; col++) {
 
-        // Element-wise multiplication (AND)
         std::transform(bitstream_start, bitstream_end, parity_matrix[col].begin(), prod.begin(), std::multiplies<bool>());
 		
-        // Sum (XOR) of products
         syndrome_vec[col] = (std::count(prod.begin(), prod.end(), true) % 2) == 1;
     }
     
-    
-    // Check for syndrome_vec in syndrome_vecs
     for (unsigned int idx = 0; idx <= 40; idx += 10) {
         if (std::equal(syndrome_bits.begin() + idx, syndrome_bits.begin() + idx + 10, syndrome_vec.begin())) {
             switch (idx) {
@@ -371,45 +371,31 @@ void checkSynch(std::string &offset_type, std::vector<int>::iterator bitstream_s
                 case 40:{ offset_type = "D"; uint_copy(reg, bitstream_start, bitstream_end -10, 3);  break;}
             }
             if (isSequenceABCD(offset_type, window)){
-                std::cerr << std::hex << reg << std::endl;
                 parse(reg, chars, output, first_time);
             }
-            for (int i = 0; i < window.size(); i++){
-                std::cerr << window[i] << " ";
-            }
-            std::cerr << std::endl;
 
-            return; // Exit early if offset_type is set
+            return;
         }
     }
-    offset_type = "None"; // If not found, set to "None"
+    offset_type = "None";
 }
 
 
-void startSynch(unsigned int &idx, std::vector<int> &stream, std::vector<int> &synch_state_bits, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
-    stream.insert(stream.begin(), synch_state_bits.begin(), synch_state_bits.end());
+void start_frame_sync(unsigned int &idx, std::vector<int> &decoded_stream, std::vector<int> &sync_state_bits, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+    decoded_stream.insert(decoded_stream.begin(), sync_state_bits.begin(), sync_state_bits.end());
     
     std::string x = "";
-    unsigned int endRange = stream.size() - 26;
+    unsigned int end_range = decoded_stream.size() - 26;
  
-	while (idx < endRange) {        
-        checkSynch(x, stream.begin()+idx, stream.begin()+idx+26, reg, chars, output, first_time, window);
+	while (idx < end_range) {        
+        check_block(x, decoded_stream.begin()+idx, decoded_stream.begin()+idx+26, reg, chars, output, first_time, window);
         if(x != "None"){
-			std::cerr << "************ Synchronized at index " << idx << std::endl;
-            std::cerr << x << std::endl;
 			idx += 26;
 		}
 		else
 			idx += 1;
     }
-	synch_state_bits.clear();
-	synch_state_bits.insert(synch_state_bits.begin(), stream.begin() + idx, stream.end());
+	sync_state_bits.clear();
+	sync_state_bits.insert(sync_state_bits.begin(), decoded_stream.begin() + idx, decoded_stream.end());
 }
 
-void genSyndromeVector(std::vector<bool> &syndrome_vecs){
-    std::string bits = "11110110001111010100100101110011110011001001011000";
-
-    for(unsigned int i = 0; i < bits.size(); i++){
-        syndrome_vecs.emplace_back(bits[i] - '0');
-    }
-}
