@@ -9,13 +9,14 @@ set multiplot layout 2,1 scale 1.0,1.0  # set two plots for this figure
 # time domain
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'Sample #'                   # set x-axis label
-set yrange [-80:0]                       # set y plot range
-set xrange [0:120]                      # set x plot range
-plot '../data/PSD_stereo_dc_1pass.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
+set yrange [-1.5:1.5]                       # set y plot range
+set xrange [0:1000]                      # set x plot range
+plot '../data/rds_check.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle, \
+'../data/rds_impulse.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#aa0000' notitle
 
 
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'Sample #'                   # set x-axis label
-set yrange [-80:0]                       # set y plot range
-set xrange [0:120]                      # set x plot range
-plot '../data/carrier_PSD.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
+set yrange [-2:2]                       # set y plot range
+set xrange [0:1000]                      # set x plot range
+plot '../data/rds_clean.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle

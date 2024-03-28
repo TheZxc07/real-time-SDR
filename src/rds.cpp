@@ -3,6 +3,10 @@
 #include "filter.h"
 #include "pll.h"
 #include "rds_utilities.h"
+#include "logfunc.h"
+#include "fourier.h"
+#include "iofunc.h"
+#include "dy4.h"
 
 void rds(args* p){
 
@@ -76,69 +80,114 @@ void rds(args* p){
     int wrong_blocks_cont = 0;
     int group_assembly_started = 0;
     int group_good_blocks_conts = 0;
-
+    int decoder_cont = 0;
+    unsigned int idx = 0;
+    
+    std::vector<float> index;
+    std::vector<float> rdsCheck;
+    std::vector<float> rdsImpulse;
+    std::deque<std::string> window;
+    
+    std::vector<int> decoded_bits_stream;
+    std::vector<int> decoded_bits_stream_state;
+    
+    
     while(true){
 		//std::cerr << "Processing block: " << block_count << "\n";
-        p->queue.wait_and_pop(fm_demod, 1);
-        
-        // RDS band extraction through BPF.
-        convolveFIR(rds_band, *fm_demod, rds_h, rds_band_state, 1);
+		p->queue.wait_and_pop(fm_demod, 1);
+		/*
+		printRealVector(*fm_demod);
+		genIndexVector(index, (*fm_demod).size());
+		logVector("fm_demodRDS", index, (*fm_demod));
+		exit(1);
+		*/
+		// RDS band extraction through BPF.
+		convolveFIR(rds_band, *fm_demod, rds_h, rds_band_state, 1);
 
 		// Indicate to RF frontend, RDS thread is prepared to recieve more demodulated FM data.
-        p->queue.prepare(1);
-        
-        goto end;
-        
-        // Squaring Non-Linearity to generate pilot at 114 KHz.
-        for (int i = 0; i < block_size; i++){
-            rds_band_squared[i] = 2*rds_band[i]*rds_band[i];
-        }
-      
-        // 114 KHz pilot extraction through BPF.
-        convolveFIR(gen_pilot, rds_band_squared, pilot_h, gen_pilot_state, 1);
-        
-        // Generate a 57 KHz tone from 114 KHz pilot.
-        fmpll(gen_pilot, 114e3, if_Fs, IPLL, block_args, 0.5, 0, 0.001);
-        
+		p->queue.prepare(1);
+		
+		// Squaring Non-Linearity to generate pilot at 114 KHz.
+		for (int i = 0; i < block_size; i++){
+			rds_band_squared[i] = rds_band[i]*rds_band[i];
+		}
+	  
+		// 114 KHz pilot extraction through BPF.
+		convolveFIR(gen_pilot, rds_band_squared, pilot_h, gen_pilot_state, 1);
+		
+		// Generate a 57 KHz tone from 114 KHz pilot.
+		fmpll(gen_pilot, 114e3, if_Fs, IPLL, block_args, 0.5, 0, 0.001);
 
-        // Delay the RDS band to phase align with the carrier.
-        convolveFIR(rds_band_delay, rds_band, rds_delay_h, rds_band_delay_state, 1);
+		// Delay the RDS band to phase align with the carrier.
+		convolveFIR(rds_band_delay, rds_band, rds_delay_h, rds_band_delay_state, 1);
 
-        // Mixing to downconvert RDS band to baseband.
-        for (int i = 0; i < block_size; i++){
-            rds_dc[i] = 2*rds_band_delay[i]*IPLL[i];
-        }
+		// Mixing to downconvert RDS band to baseband.
+		for (int i = 0; i < block_size; i++){
+			rds_dc[i] = 2*rds_band_delay[i]*IPLL[i];
+		}
 
-        // Extract RDS band through LPF.
-        convolveFIR(rds_filt, rds_dc, rds_baseband_h, rds_filt_state, 247, 640);
+		// Extract RDS band through LPF.
+		convolveFIR(rds_filt, rds_dc, rds_baseband_h, rds_filt_state, 247, 640);
 	
-        // Pass RDS band through RRC filter to reduce ISI.
-        convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
-
-        // Perform clock and data recovery to produce sample offset.
-        sample_offset = cdr(sps, rds_clean);
-        
-        //std::cerr << sample_offset << std::endl;
-        
-        // Take every sps-th element starting at offset from the clean RDS signal to recover symbols.
-        symbols.clear();
-        for (int i = 0; sample_offset + i*sps < (int)rds_clean.size(); i++){
-            symbols.push_back(rds_clean[sample_offset + i*sps] > 0);
-            //if(symbols[i] == symbols[i-1])
-        }
-        
-        // Perform Manchester decoding to extract bits from symbols.
-        manchester_decode(bits, symbols, block_count, half_symbol, start);
-
-        // Perform differential decoding to recover bitstream.
-        differential_decode(decoded_bits, bits, last_bit, block_count);
+		// Pass RDS band through RRC filter to reduce ISI.
+		convolveFIR(rds_clean, rds_filt, rrc_h, rds_clean_state, 1);
 		
-		error_detection(reg, chars, output, first_time, sync, prevsync, lastseen_offset, rds_bit_cont, lastseen_offset_cont, block_distance, block_number, block_bit_cont, block_cont, wrong_blocks_cont, group_assembly_started, group_good_blocks_conts, decoded_bits);
-		
+		if (block_count > 5 && p->rds_on){
+			// Perform clock and data recovery to produce sample offset.
+			sample_offset = cdr(sps, rds_clean);
+			/*
+			std::vector<float> rdsImpulseBlock(rds_clean.size(), 0.0);
+			if (block_count > 10 && block_count < 20){
+				rdsCheck.insert(rdsCheck.end(), rds_clean.begin(), rds_clean.end());
+				for (int i = sample_offset; i < rds_clean.size(); i+=sps){
+					rdsImpulseBlock[i] = rds_clean[i];
+				}
+				rdsImpulse.insert(rdsImpulse.end(), rdsImpulseBlock.begin(), rdsImpulseBlock.end());
+				if (block_count == 19){
+					genIndexVector(index, rdsCheck.size());
+					logVector("rds_impulse", index, rdsImpulse);
+					logVector("rds_check", index, rdsCheck);
+					exit(1);
+				}
+			}
+			*/
+			//std::cerr << sample_offset << std::endl;
+			
+			// Take every sps-th element starting at offset from the clean RDS signal to recover symbols.
+			symbols.clear();
+			for (int i = 0; sample_offset + i*sps < (int)rds_clean.size(); i++){
+				symbols.push_back(rds_clean[sample_offset + i*sps] > 0);
+				//if(symbols[i] == symbols[i-1])
+			}
+			
+			// Perform Manchester decoding to extract bits from symbols.
+			manchester_decode(bits, symbols, block_count, half_symbol, start);
+
+			// Perform differential decoding to recover bitstream.
+			differential_decode(decoded_bits, bits, last_bit, block_count);
+			/*
+			if (block_count == 10){
+				for (int i = 0; i < decoded_bits.size(); i++){
+					std::cerr << decoded_bits[i];
+				}
+				exit(1);
+			}
+			
+			*/
+			/*
+			error_detection(reg, chars, output, first_time, sync, prevsync, lastseen_offset, rds_bit_cont, lastseen_offset_cont, block_distance, block_number, block_bit_cont, block_cont, wrong_blocks_cont, group_assembly_started, group_good_blocks_conts, decoded_bits);
+			*/
+			
+			decoder_cont++;
+			decoded_bits_stream.insert(decoded_bits_stream.end(), decoded_bits.begin(), decoded_bits.end());
+			
+			if (decoder_cont == 15){
+				start_frame_sync(idx, decoded_bits_stream, decoded_bits_stream_state, reg, chars, output,first_time, window);  
+				decoder_cont = 0;
+				idx = 0;
+				decoded_bits_stream.clear();
+			} 
+		} 
 		block_count++;
-		
-		end:
-		continue;
     }
-
 }

@@ -119,6 +119,21 @@ void stringify(uint64_t characters, char* combined){
 }
 
 
+const std::vector<std::vector<bool>> parity_matrix = {
+     {1,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1},
+     {0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1},
+     {0,0,1,0,0,0,0,0,0,0,1,0,1,1,1,0,0,0,1,0,1,1,1,1,1,0},
+     {0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,0,0,0},
+     {0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,0,0},
+     {0,0,0,0,0,1,0,0,0,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,0,1},
+     {0,0,0,0,0,0,1,0,0,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,1,1},
+     {0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,0},
+     {0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1},
+     {0,0,0,0,0,0,0,0,0,1,0,0,1,1,1,1,1,0,1,1,0,0,1,1,1,1} 
+};
+
+const std::vector<bool> syndrome_bits = { 1,1,1,1,0,1,1,0,0,0,1,1,1,1,0,1,0,1,0,0,1,0,0,1,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1,0,0,1,0,1,1,0,0,0 };
+
 const char* PTY_codes[] = {
     "Undefined",
     "News",
@@ -161,20 +176,24 @@ void parse (const uint64_t &bytes, uint64_t &chars, uint64_t &output, bool &firs
     uint16_t PI = (bytes >> 48) & 0xFFFF;
     uint8_t PTY_data = (bytes >> 37) & 0x1F;
     
-    if (first_time){
-        std::cerr << "PI: " << PI << std::endl;
+    if (1){
+        std::cerr << "PI: " << std::hex << PI << std::endl;
         std::cerr << "PTY: " << PTY_codes[PTY_data] << std::endl;
         first_time = false;
     }
     
+    
     if (group_type == 0){
-        chars = (chars << 16) | (bytes & 0xFFFF); //shift up characters, add the new ones from the last block
+        uint64_t mask = ~(static_cast<uint64_t>(0xFFFF) << (48-16*placement));
+        chars = chars & mask;
+        uint64_t word = bytes & static_cast<uint64_t>(0xFFFF);
+        chars = chars | (static_cast<uint64_t>(word) << 16*(3-placement)); //shift up characters, add the new ones from the last block
         //note, for 0A or 0B, the last 16 data bits are unchanged
         if ((placement == 3) && (chars != output)){ //if we've filled 8 characters
             output = chars; //update state
             char str[9];
             stringify(chars, str);
-            std::cerr << "Prorgam Service: " << str << std::endl;
+            std::cerr << "Program Service: " << str << std::endl;
         }
     }
 }
@@ -191,7 +210,7 @@ void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &fir
         reg = (reg << 1) | decoded_bits[i];
         if(!sync){
             reg_syndrome = calc_syndrome(reg, 26);
-            //std::cerr << "Reg Syndrome: " << reg_syndrome << "    Reg: " << reg << std::endl;
+            std::cerr << "Reg Syndrome: " << reg_syndrome << "    Reg: " << reg << std::endl;
             for (int j = 0; j < 5; j++){
                 if (reg_syndrome == syndromes[j]){
                     if (!prevsync){
@@ -290,3 +309,93 @@ void error_detection(uint64_t &reg, uint64_t &chars, uint64_t &output, bool &fir
     //exit(1);
     
 }
+
+void uint_copy(uint64_t &reg, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, int block_type){
+    //types A = 0, B = 1, C = 2, D = 3
+    
+    std::vector<int> scan(bitstream_start, bitstream_end);
+    
+    uint64_t mask = ~(static_cast<uint64_t>(0xFFFF) << (48-16*block_type));
+    
+    /*
+    if (block_type == 0){
+        for (int i = 0; i < scan.size(); i++){
+            std::cerr << scan[i] << " ";
+        }
+    }
+    std::cerr << std::endl;
+    */
+    reg = reg & mask;
+    for(int i = 0; i < scan.size(); i++){
+        reg = reg | (static_cast<uint64_t>(scan[i]) << (15 - i + 48 - 16*block_type));
+    }
+    /*
+    std::cerr << "Mask: " << std::hex << mask << std::endl; 
+    std::cerr << "Block detected: " << std::hex << reg << std::endl;
+    */
+    
+}   
+
+bool isSequenceABCD(std::string current, std::deque<std::string> &window) {
+    window.push_back(current);
+    if (window.size() > 4)
+        window.pop_front();
+
+    // Check if the current window forms the sequence A->B->C->D
+    if (window.size() == 4 && window[0] == "A" && window[1] == "B" && window[2] == "C" && window[3] == "D") {
+        return true; // Sequence found
+    }
+
+    return false; // Sequence not found
+}
+
+void check_block(std::string &offset_type, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+    std::vector<bool> parity_vec(26); 
+    std::vector<bool> prod(26, false); 
+    std::vector<bool> syndrome_vec(10); 
+
+    for (int col = 0; col < 10; col++) {
+
+        std::transform(bitstream_start, bitstream_end, parity_matrix[col].begin(), prod.begin(), std::multiplies<bool>());
+		
+        syndrome_vec[col] = (std::count(prod.begin(), prod.end(), true) % 2) == 1;
+    }
+    
+    for (unsigned int idx = 0; idx <= 40; idx += 10) {
+        if (std::equal(syndrome_bits.begin() + idx, syndrome_bits.begin() + idx + 10, syndrome_vec.begin())) {
+            switch (idx) {
+                case 0: { offset_type = "A"; uint_copy(reg, bitstream_start, bitstream_end -10, 0); break; }
+                case 10:{ offset_type = "B"; uint_copy(reg, bitstream_start, bitstream_end -10, 1); break; }
+                case 20:{ offset_type = "C"; uint_copy(reg, bitstream_start, bitstream_end -10, 2); break; }
+                case 30: offset_type = "Cp"; break;
+                case 40:{ offset_type = "D"; uint_copy(reg, bitstream_start, bitstream_end -10, 3);  break;}
+            }
+            if (isSequenceABCD(offset_type, window)){
+                parse(reg, chars, output, first_time);
+            }
+
+            return;
+        }
+    }
+    offset_type = "None";
+}
+
+
+void start_frame_sync(unsigned int &idx, std::vector<int> &decoded_stream, std::vector<int> &sync_state_bits, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
+    decoded_stream.insert(decoded_stream.begin(), sync_state_bits.begin(), sync_state_bits.end());
+    
+    std::string x = "";
+    unsigned int end_range = decoded_stream.size() - 26;
+ 
+	while (idx < end_range) {        
+        check_block(x, decoded_stream.begin()+idx, decoded_stream.begin()+idx+26, reg, chars, output, first_time, window);
+        if(x != "None"){
+			idx += 26;
+		}
+		else
+			idx += 1;
+    }
+	sync_state_bits.clear();
+	sync_state_bits.insert(sync_state_bits.begin(), decoded_stream.begin() + idx, decoded_stream.end());
+}
+

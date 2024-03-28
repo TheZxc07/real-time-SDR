@@ -3,6 +3,7 @@
 #include "filter.h"
 #include "args.h"
 #include "threadsafequeue.h"
+#include "logfunc.h"
 
 void mono(args* p){
 	
@@ -28,7 +29,7 @@ void mono(args* p){
 	while(true){
 		// Retrieve demodulated FM data from the front end.
 		p->queue.wait_and_pop(fm_demod, 0);
-
+	
 		// Mono subchannel extraction.
 		convolveFIR(audio_filt, *fm_demod, audio_h, state_audio, audio_upsample, audio_decim);
 		
