@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy import signal
@@ -286,7 +285,7 @@ if __name__ == "__main__":
     test_arr = []
 
 
-    in_fname = "./data/samples8.raw"
+    in_fname = "./data/samples3.raw"
     raw_data = np.fromfile(in_fname, dtype='uint8')
     print("Read raw RF data from \"" + str(len(raw_data)) + "\" in unsigned 8-bit format")
     # IQ data is normalized between -1 and +1 in 32-bit float format
@@ -400,6 +399,9 @@ if __name__ == "__main__":
     #print(bits[:100])
     #print(man)
 
+
+
+
         for i in range(len(decodeBlk)):
             # in C++ reg doesn't get init so it will be random at first, for ours its 0s
             # It was also an unsigned long but never seemed to get anywhere near the max value
@@ -468,7 +470,7 @@ if __name__ == "__main__":
                     if block_number == 0 and good_block:
                         group_assembly_started = True
                         group_good_blocks_counter = 1
-                        bytes = bytearray(8) # 8 bytes filled with 0s
+                        #bytes = bytearray(8) # 8 bytes filled with 0s
                         register = np.uint64(0)
 
                     if group_assembly_started:
@@ -478,16 +480,16 @@ if __name__ == "__main__":
                             # raw data bytes, as received from RDS. 8 info bytes, followed by 4 RDS offset chars: ABCD/ABcD/EEEE (in US) which we leave out here
                             # RDS information words
                             # block_number is either 0,1,2,3 so this is how we fill out the 8 bytes
-                            bytes[block_number*2] = (dataword >> 8) & 255
-                            bytes[block_number*2+1] = dataword & 255
+                            #bytes[block_number*2] = (dataword >> 8) & 255
+                            #bytes[block_number*2+1] = dataword & 255
                             register &= ~(np.uint64(0xFFFF) << np.uint64(48-block_number*16))
                             register |= np.uint64(dataword) << np.uint64(48 - block_number*16)
                             group_good_blocks_counter += 1
                             #print('group_good_blocks_counter:', group_good_blocks_counter)
                         if group_good_blocks_counter == 5:
                             #print(bytes)
-                            bytes_out.append(bytes) # list of len-8 lists of bytes
-                            print(register)
+                            #bytes_out.append(bytes) # list of len-8 lists of bytes
+                            test_arr.append(register)
                             chars, output, first_time = parse(register, first_time, chars, output)
 
 
@@ -505,94 +507,5 @@ if __name__ == "__main__":
                         wrong_blocks_counter = 0
 
             rdsBitCtr += 1 #sub for i
+
     #print(test_arr)
-
-    ###########
-    # PARSER  #
-    ###########
-    '''
-    print(bytes_out)
-    bytes_out = bytes_out[:]
-    first_time = True
-    chars = [" "]*8
-    output = "        "
-    for bytes in bytes_out:
-        group_0 = bytes[1] | (bytes[0] << 8)
-        group_1 = bytes[3] | (bytes[2] << 8)
-        group_2 = bytes[5] | (bytes[4] << 8)
-        group_3 = bytes[7] | (bytes[6] << 8)
-
-        group_type = (group_1 >> 12) & 0xf # here is what each one means, e.g. RT is radiotext which is the only one we decode here: ["BASIC", "PIN/SL", "RT", "AID", "CT", "TDC", "IH", "RP", "TMC", "EWS", "___", "___", "___", "___", "EON", "___"]
-        AB = (group_1 >> 11 ) & 0x1 # b if 1, a if 0
-        placement = (group_1) &0x03
-
-        #print("group_type:", group_type) # this is essentially message type, i only see type 0 and 2 in my recording
-        #print("AB:", AB)
-
-        program_identification = group_0     # "PI"
-
-        program_type = (group_1 >> 5) & 0x1f # "PTY"
-        pty = pty_table[program_type][pty_locale]
-
-        pi_area_coverage = (program_identification >> 8) & 0xf
-        coverage_area = coverage_area_codes[pi_area_coverage]
-
-        pi_program_reference_number = program_identification & 0xff # just an int
-
-        if first_time:
-            print("PTY:", pty)
-            print("program:", hex(program_identification))
-            print("coverage_area:", coverage_area)
-            first_time = False
-
-
-        
-        if group_type == 0:
-            #print(chars)
-            chars[2*placement+1] = chr(bytes[7])
-            chars[2*placement] = chr(bytes[6])
-
-            if placement == 3 and "".join(chars) != output:
-                output = "".join(chars)
-                print(f'PS: {output}')
-            #print(f'PS: {x}, {placement}')
-'''
-            
-'''
-        if group_type == 2:
-            # when the A/B flag is toggled, flush your current radiotext
-            if radiotext_AB_flag != ((group_1 >> 4) & 0x01):
-                radiotext = [' ']*65
-            radiotext_AB_flag = (group_1 >> 4) & 0x01
-            text_segment_address_code = group_1 & 0x0f
-            if AB:
-                radiotext[text_segment_address_code * 2    ] = chr((group_3 >> 8) & 0xff)
-                radiotext[text_segment_address_code * 2 + 1] = chr(group_3        & 0xff)
-            else:
-                radiotext[text_segment_address_code *4     ] = chr((group_2 >> 8) & 0xff)
-                radiotext[text_segment_address_code * 4 + 1] = chr(group_2        & 0xff)
-                radiotext[text_segment_address_code * 4 + 2] = chr((group_3 >> 8) & 0xff)
-                radiotext[text_segment_address_code * 4 + 3] = chr(group_3        & 0xff)
-            print(''.join(radiotext))
-        else:
-            pass
-            #print("unsupported group_type:", group_type)'''
-
-    #fmPlotPSD(ax1, clean, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
-    #plotTime(SymbArr[10:60], time)
-    #plt.show()
-    #plt.scatter(SymbArr, QSymbArr, s=10)
-    #plt.show()
-
-    #plotTime(Qclean[1000:6000], time)
-
-    #plotTime(SymbArr[0:100], time1)
-
-
-
-    # save PSD plots
-    #fig.savefig("../data/fmMonoBasic.png")
-    #plt.show()
-
-    #linSquare = np.square(audio_filt)
-
