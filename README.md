@@ -21,3 +21,5 @@ program service is far less consistent in both modes
 
 In Python, RDS has been modelled completely (given a strong signal, like samples3 or samples8) in OurRDS.py
 We used some algorithms from PySDR for frame sync, and scipy libraries to supplement or signal processing
+
+![image](https://github.com/3dy4-2024/project-group00-tuesday/assets/96309798/caef31c4-64ec-4028-9908-bebae00bd8b6)
