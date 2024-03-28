@@ -311,15 +311,24 @@ void uint_copy(uint64_t &reg, std::vector<int>::iterator bitstream_start, std::v
     
     std::vector<int> scan(bitstream_start, bitstream_end);
     
-    uint64_t mask = ~(0xFFFF << (48-16*block_type));
+    uint64_t mask = ~(static_cast<uint64_t>(0xFFFF) << (48-16*block_type));
     
-    reg = reg & mask;
-    
-    std::cerr << "Block detected: " << std::hex << reg << std::endl;
-    std::cerr << scan.size() << std::endl;
-    for(int i = 0; i < scan.size(); i++){
-        reg = reg | (scan[i] << (16 - i + 48 - 16*block_type));
+    /*
+    if (block_type == 0){
+        for (int i = 0; i < scan.size(); i++){
+            std::cerr << scan[i] << " ";
+        }
     }
+    std::cerr << std::endl;
+    */
+    reg = reg & mask;
+    for(int i = 0; i < scan.size(); i++){
+        reg = reg | (static_cast<uint64_t>(scan[i]) << (15 - i + 48 - 16*block_type));
+    }
+    /*
+    std::cerr << "Mask: " << std::hex << mask << std::endl; 
+    std::cerr << "Block detected: " << std::hex << reg << std::endl;
+    */
     
 }   
 
@@ -337,9 +346,9 @@ bool isSequenceABCD(std::string current, std::deque<std::string> &window) {
 }
 
 void checkSynch(std::string &offset_type, std::vector<int>::iterator bitstream_start, std::vector<int>::iterator bitstream_end, uint64_t &reg, uint64_t &chars, uint64_t &output,bool &first_time, std::deque<std::string> &window) {
-    std::vector<bool> parity_vec(26); // Resize only once
-    std::vector<bool> prod(26, false); // Initialize to false
-    std::vector<bool> syndrome_vec(10); // Fixed size
+    std::vector<bool> parity_vec(26); 
+    std::vector<bool> prod(26, false); 
+    std::vector<bool> syndrome_vec(10); 
 
     for (int col = 0; col < 10; col++) {
 
@@ -349,6 +358,7 @@ void checkSynch(std::string &offset_type, std::vector<int>::iterator bitstream_s
         // Sum (XOR) of products
         syndrome_vec[col] = (std::count(prod.begin(), prod.end(), true) % 2) == 1;
     }
+    
     
     // Check for syndrome_vec in syndrome_vecs
     for (unsigned int idx = 0; idx <= 40; idx += 10) {

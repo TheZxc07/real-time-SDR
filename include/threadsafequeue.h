@@ -29,7 +29,7 @@ public:
 		while (!(audio_thread_ready && rds_thread_ready)) {
 			producerCV.wait(lock);
 		}
-    
+		
 		// Once both threads are ready, proceed with data insertion
 		if (data) {
 			delete data;
