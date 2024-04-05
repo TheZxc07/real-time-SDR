@@ -12,9 +12,9 @@ In this Repo, we have our compiled effort for our SDR.
 
 We have accomplished the following sections:
 
-MONO: All modes complete in src
+MONO: All modes complete in src commit: b604716ac62599936c921642c1f303fde7882f11
 
-STEREO: All modes complete in src
+STEREO: All modes complete in src commit:  b604716ac62599936c921642c1f303fde7882f11
 
 When testing MONO and STEREO please checkout b604716ac62599936c921642c1f303fde7882f11 with commit message "mono fully implemented all modes stereo fully implemented all modes threading implemented rds implemented (does not work and partly turned off) rds works in model."
 
