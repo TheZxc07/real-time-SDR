@@ -16,8 +16,12 @@ MONO: All modes complete in src
 
 STEREO: All modes complete in src
 
+When testing MONO and STEREO please checkout b604716ac62599936c921642c1f303fde7882f11 with commit message "mono fully implemented all modes stereo fully implemented all modes threading implemented rds implemented (does not work and partly turned off) rds works in model."
+
 RDS: MODE 0 Works to acquire PTY and PI consistently, Mode 2 is far less consistent
-program service is far less consistent in both modes
+program service is far less consistent in both modes.
+
+When testing RDS the latest commit is bussin'
 
 In Python, RDS has been modelled completely (given a strong signal, like samples3 or samples8) in OurRDS.py
 We used some algorithms from PySDR for frame sync, and scipy libraries to supplement or signal processing
